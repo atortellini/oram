@@ -3,8 +3,8 @@
 
 #include <stdint.h>
 
-typedef enum { READ, WRITE } OP;
+typedef enum { READ, WRITE } OP_t;
 
-void access(uint32_t target_block_id, OP operation, uint8_t new_data[], uint8_t old_data[]);
+void access(uint32_t target_block_id, OP_t operation, uint8_t new_data[], uint8_t old_data[]);
 
 #endif
