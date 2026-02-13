@@ -8,9 +8,14 @@
 
 #include "crypto.h"
 #include "globals.h"
+#include "rand.h"
 #include "server.h"
 #include "stash.h"
 #include "types.h"
+
+static void initialize_dummy_block(void);
+static void fill_position_map_with_random_paths(void);
+static void fill_server_with_dummies(void);
 
 static void fetch_path_buckets_into_stash(uint32_t target_path_id);
 static Block *find_block_in_stash(uint32_t target_block_id);
@@ -24,10 +29,16 @@ static bool is_dummy_block(Block *block);
 static void write_bucket_to_server(uint32_t bucket_id, Block blocks[],
                                    size_t num_blocks);
 
-void access(uint32_t target_block_id, OP_t operation, uint8_t new_data[],
-            uint8_t old_data[]) {
+void client_setup() {
+  initialize_dummy_block();
+  fill_position_map_with_random_paths();
+  fill_server_with_dummies();
+}
+
+void client_access(uint32_t target_block_id, OP_t operation, uint8_t new_data[],
+                   uint8_t old_data[]) {
   const uint32_t target_path_id = client_position_map[target_block_id];
-  const uint32_t new_path_id = uniform_random(0, NUM_TOTAL_REAL_BLOCKS);
+  const uint32_t new_path_id = uniform_random(NUM_TOTAL_REAL_BLOCKS);
   client_position_map[target_block_id] = new_path_id;
 
   fetch_path_buckets_into_stash(target_path_id);
@@ -69,6 +80,25 @@ void access(uint32_t target_block_id, OP_t operation, uint8_t new_data[],
   }
 
   evict_path_from_stash(target_path_id);
+}
+
+static void initialize_dummy_block(void) {
+  DUMMY_BLOCK.block_id = UINT32_MAX;
+  DUMMY_BLOCK.path_id = 0;
+  generate_random_bytes(DUMMY_BLOCK.data, NUM_BYTES_PER_BLOCK);
+}
+
+static void fill_position_map_with_random_paths(void) {
+  for (size_t i = 0; i < NUM_TOTAL_REAL_BLOCKS; i++) {
+    const uint32_t random_path = uniform_random(NUM_TOTAL_REAL_BLOCKS);
+    client_position_map[i] = random_path;
+  }
+}
+
+static void fill_server_with_dummies(void) {
+  for (size_t i = 0; i < NUM_TOTAL_BUCKETS; i++) {
+    write_bucket_to_server(i, NULL, 0);
+  }
 }
 
 static void fetch_path_buckets_into_stash(uint32_t target_path_id) {
@@ -143,7 +173,7 @@ static uint32_t get_bucket_id(uint32_t path_id, uint32_t level) {
 static size_t read_bucket_from_server(uint32_t bucket_id,
                                       Block blocks_found[]) {
 
-  EncryptedBucket *encrypted_bucket = Server_ReadBucket(bucket_id);
+  EncryptedBucket *encrypted_bucket = server_read_bucket(bucket_id);
 
   size_t num_blocks_found = 0;
   for (size_t i = 0; i < NUM_BLOCKS_PER_BUCKET; i++) {
@@ -188,8 +218,8 @@ static void write_bucket_to_server(uint32_t bucket_id, Block blocks[],
 
   for (size_t i = 0; i < NUM_BLOCKS_PER_BUCKET; i++) {
     const Block *block_to_encrypt = &plaintext_blocks[i];
-    EncryptedBlock *encrypted_block_target = &encrypted_bucket.blocks[i];
-    encrypt_block(block_to_encrypt, encrypted_block_target);
+    EncryptedBlock *encrypted_block_output = &encrypted_bucket.blocks[i];
+    encrypt_block(block_to_encrypt, encrypted_block_output);
   }
-  Server_WriteBucket(bucket_id, &encrypted_bucket);
+  server_write_bucket(bucket_id, &encrypted_bucket);
 }
