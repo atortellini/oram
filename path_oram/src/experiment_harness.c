@@ -55,39 +55,21 @@ static void insert_synthetic_data_into_server(void) {
 
 static void
 generate_ranged_point_query_access_sequence(const uint32_t query_size) {
-  fill_access_sequence_with_ranged_point_queries(0, NUM_EXPERIMENT_ACCESSES,
-                                                 query_size);
-}
+  uint32_t curr_index = 0;
 
-static void
-fill_access_sequence_with_ranged_point_queries(uint32_t curr_index,
-                                               const uint32_t arr_size_left,
-                                               const uint32_t query_size) {
-  const bool noAccessesToGenerate = arr_size_left == 0;
-  const bool oneAccessToGenerate = arr_size_left == 1;
-  if (noAccessesToGenerate) {
-    return;
+  while (curr_index < NUM_EXPERIMENT_ACCESSES) {
+    const uint32_t arr_size_left = NUM_EXPERIMENT_ACCESSES - curr_index;
+
+    const uint32_t max_query_size = min(arr_size_left, query_size);
+    const uint32_t range_query_size = uniform_random(max_query_size) + 1;
+
+    const uint32_t start_block_range_id = uniform_random(NUM_TOTAL_REAL_BLOCKS);
+
+    for (size_t i = 0; i < range_query_size; i++) {
+      access_sequence_buffer[curr_index++] =
+          (start_block_range_id + i) % NUM_TOTAL_REAL_BLOCKS;
+    }
   }
-
-  if (oneAccessToGenerate) {
-    access_sequence_buffer[curr_index] = uniform_random(NUM_TOTAL_REAL_BLOCKS);
-    return;
-  }
-
-  const uint32_t max_query_size = min(arr_size_left, query_size);
-  const uint32_t range_query_size = uniform_random(max_query_size) + 1;
-  const uint32_t end_index = curr_index + range_query_size;
-  const uint32_t start_block_range_id = uniform_random(NUM_TOTAL_REAL_BLOCKS);
-
-  for (size_t sequence_number = 0; curr_index < end_index;
-       sequence_number++, curr_index++) {
-    access_sequence_buffer[curr_index] =
-        (start_block_range_id + sequence_number) % NUM_TOTAL_REAL_BLOCKS;
-  }
-
-  const uint32_t new_arr_size_left = arr_size_left - range_query_size;
-  fill_access_sequence_with_ranged_point_queries(end_index, new_arr_size_left,
-                                                 query_size);
 }
 
 // I have an array of NUM_EXPERIMENT_ACCESSES size where, on each step, I want
