@@ -14,5 +14,5 @@ extern EncryptedBucket server_storage[NUM_TOTAL_BUCKETS];
 
 // EXPERIMENT GLOBALS
 extern uint8_t synthetic_dataset[NUM_TOTAL_REAL_BLOCKS * NUM_BYTES_PER_BLOCK];
-
+extern uint32_t access_sequence_buffer[NUM_EXPERIMENT_ACCESSES];
 #endif
