@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "types.h"
 #include "globals.h"
@@ -11,7 +12,7 @@ void Stash_RemoveBlock(uint32_t index) {
   const size_t num_blocks = client_stash.num_blocks;
   const bool stashIsEmpty = num_blocks == 0;
   if (stashIsEmpty) {
-    fpritnf(stderr, "Attempt to remove block from an empty client stash");
+    fprintf(stderr, "Attempt to remove block from an empty client stash");
     exit(1);
   }
   const bool indexIsOutOfRange = index > (num_blocks - 1);

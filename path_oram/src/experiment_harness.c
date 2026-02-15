@@ -13,6 +13,12 @@
 
 #define min(X, Y) ((X) < (Y) ? (X) : (Y))
 
+static void prepare_synthetic_data(void);
+static void generate_synthetic_data(void);
+static void insert_synthetic_data_into_server(void);
+
+static void
+generate_ranged_point_query_access_sequence(const uint32_t query_size);
 // also need to think about for the experiments if I would want it to be a
 // random number of writes/reads being performed on random blocks or if there
 // should be parameters to specify how many reads/writes, what blocks to access,
