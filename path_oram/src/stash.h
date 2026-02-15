@@ -4,8 +4,8 @@
 #include <stdint.h>
 #include "types.h"
 
-void Stash_RemoveBlock(uint32_t index);
+void STASH_remove_block(uint32_t index);
 
-void Stash_AddBlock(Block *block);
+void STASH_add_block(Block *block);
 
 #endif

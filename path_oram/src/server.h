@@ -3,8 +3,8 @@
 
 #include "types.h"
 
-EncryptedBucket *server_read_bucket(uint32_t bucket_id);
+EncryptedBucket *SERVER_read_bucket(uint32_t bucket_id);
 
-void server_write_bucket(uint32_t bucket_id, EncryptedBucket *bucket);
+void SERVER_write_bucket(uint32_t bucket_id, EncryptedBucket *bucket);
 
 #endif

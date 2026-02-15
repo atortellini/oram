@@ -29,13 +29,13 @@ static bool is_dummy_block(Block *block);
 static void write_bucket_to_server(uint32_t bucket_id, Block blocks[],
                                    size_t num_blocks);
 
-void client_setup() {
+void CLIENT_setup() {
   initialize_dummy_block();
   fill_position_map_with_random_paths();
   fill_server_with_dummies();
 }
 
-void client_access(uint32_t target_block_id, OP_t operation, uint8_t new_data[],
+void CLIENT_access(uint32_t target_block_id, OP_t operation, uint8_t new_data[],
                    uint8_t old_data[]) {
   const uint32_t target_path_id = client_position_map[target_block_id];
   const uint32_t new_path_id = uniform_random(NUM_TOTAL_REAL_BLOCKS);
@@ -58,7 +58,7 @@ void client_access(uint32_t target_block_id, OP_t operation, uint8_t new_data[],
       new_block.path_id = new_path_id;
       memcpy(new_block.data, new_data, NUM_BYTES_PER_BLOCK);
 
-      Stash_AddBlock(&new_block);
+      STASH_add_block(&new_block);
       if (wantsOldData) {
         memset(old_data, 0, NUM_BYTES_PER_BLOCK);
       }
@@ -110,7 +110,7 @@ static void fetch_path_buckets_into_stash(uint32_t target_path_id) {
         read_bucket_from_server(target_bucket_id, blocks_found);
 
     for (size_t i = 0; i < num_real_blocks; i++) {
-      Stash_AddBlock(&blocks_found[i]);
+      STASH_add_block(&blocks_found[i]);
     }
   }
 }
@@ -142,7 +142,7 @@ static void evict_path_from_stash(uint32_t path_id) {
 
       if (candidateBlockPathIntersectsEvictedPath) {
         bucket_buffer[buffer_count++] = *candidate_block;
-        Stash_RemoveBlock(i);
+        STASH_remove_block(i);
         const bool bucketAtLevelIsFull = buffer_count == NUM_BLOCKS_PER_BUCKET;
         if (bucketAtLevelIsFull) {
           break;
@@ -173,7 +173,7 @@ static uint32_t get_bucket_id(uint32_t path_id, uint32_t level) {
 static size_t read_bucket_from_server(uint32_t bucket_id,
                                       Block blocks_found[]) {
 
-  EncryptedBucket *encrypted_bucket = server_read_bucket(bucket_id);
+  EncryptedBucket *encrypted_bucket = SERVER_read_bucket(bucket_id);
 
   size_t num_blocks_found = 0;
   for (size_t i = 0; i < NUM_BLOCKS_PER_BUCKET; i++) {
@@ -221,5 +221,5 @@ static void write_bucket_to_server(uint32_t bucket_id, Block blocks[],
     EncryptedBlock *encrypted_block_output = &encrypted_bucket.blocks[i];
     encrypt_block(block_to_encrypt, encrypted_block_output);
   }
-  server_write_bucket(bucket_id, &encrypted_bucket);
+  SERVER_write_bucket(bucket_id, &encrypted_bucket);
 }

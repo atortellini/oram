@@ -36,7 +36,7 @@ void perform_experiments(const uint32_t query_size) {
   struct timespec elapsed_time;
   for (size_t i = 0; i < NUM_EXPERIMENT_ACCESSES; i++) {
     TIME_VOID_FUNC(&elapsed_time,
-                   client_access(access_sequence_buffer[i], READ, NULL, NULL));
+                   CLIENT_access(access_sequence_buffer[i], READ, NULL, NULL));
     // DO SOMETHING WITH THIS TIMING INFORMATION LIKE WRITING TO A LOG FILE OR
     // SOMETHING
   }
@@ -55,7 +55,7 @@ static void generate_synthetic_data(void) {
 static void insert_synthetic_data_into_server(void) {
   for (size_t i = 0; i < NUM_TOTAL_REAL_BLOCKS; i++) {
     const uint32_t block_data_index = i * NUM_BYTES_PER_BLOCK;
-    client_access(i, WRITE, &synthetic_dataset[block_data_index], NULL);
+    CLIENT_access(i, WRITE, &synthetic_dataset[block_data_index], NULL);
   }
 }
 
@@ -119,7 +119,7 @@ generate_ranged_point_query_access_sequence(const uint32_t query_size) {
 //       // old data should be saved, for example if i want to have the option
 //       to
 //       // ensure correctness by comparing prev data
-//       client_access(block_to_access, WRITE, new_block_data, NULL);
+//       CLIENT_access(block_to_access, WRITE, new_block_data, NULL);
 //       update_synthetic_block_data(block_to_access, new_block_data,
 //                                   NUM_BYTES_PER_BLOCK);
 
@@ -127,7 +127,7 @@ generate_ranged_point_query_access_sequence(const uint32_t query_size) {
 //       // again should probably have an option here to specify whether old
 //       data
 //       // should be kept if wanting to do some correctness checking
-//       client_access(block_to_access, READ, NULL, NULL);
+//       CLIENT_access(block_to_access, READ, NULL, NULL);
 //     }
 //   }
 // }

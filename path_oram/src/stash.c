@@ -8,7 +8,7 @@
 #include "types.h"
 #include "globals.h"
 
-void Stash_RemoveBlock(uint32_t index) {
+void STASH_remove_block(uint32_t index) {
   const size_t num_blocks = client_stash.num_blocks;
   const bool stashIsEmpty = num_blocks == 0;
   if (stashIsEmpty) {
@@ -38,6 +38,6 @@ void Stash_RemoveBlock(uint32_t index) {
   client_stash.num_blocks--;
 }
 
-void Stash_AddBlock(Block *block) {
+void STASH_add_block(Block *block) {
   client_stash.stash[client_stash.num_blocks++] = *block;
 }
