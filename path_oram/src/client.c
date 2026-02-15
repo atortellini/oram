@@ -117,7 +117,7 @@ static void fetch_path_buckets_into_stash(uint32_t target_path_id) {
 
 static Block *find_block_in_stash(uint32_t target_block_id) {
   for (size_t i = 0; i < client_stash.num_blocks; i++) {
-    const Block *current_block = &client_stash.stash[i];
+    Block *current_block = &client_stash.stash[i];
     if (current_block->block_id == target_block_id) {
       return current_block;
     }
