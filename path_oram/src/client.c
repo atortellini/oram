@@ -50,9 +50,6 @@ void CLIENT_access(uint32_t target_block_id, OP_t operation, uint8_t new_data[],
 
   if (blockNotFound) {
     if (operationIsWrite) {
-      fprintf(stdout, "First time accessing block id: %d, adding to stash...",
-              target_block_id);
-
       Block new_block;
       new_block.block_id = target_block_id;
       new_block.path_id = new_path_id;
