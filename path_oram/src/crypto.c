@@ -20,7 +20,7 @@ static uint8_t key[AES_KEY_SIZE_BYTES];
 
 static bool cryptoIsInitialized = false;
 
-void crypto_init(void) {
+void CRYPTO_init(void) {
   if (cryptoIsInitialized) {
     fprintf(stderr, "Crypto already initialized...\n");
     return;
@@ -35,14 +35,14 @@ void crypto_init(void) {
   cryptoIsInitialized = true;
 }
 
-void encrypt_block(const Block *block_to_encrypt,
+void CRYPTO_encrypt_block(const Block *block_to_encrypt,
                    EncryptedBlock *encrypted_block_output) {
 
   if (!cryptoIsInitialized) {
     fprintf(stderr,
             "Invoked encryption without initializing crypto first. Performing "
             "initialization...\n");
-    crypto_init();
+    CRYPTO_init();
   }
   EVP_CIPHER_CTX *cipher_ctx = NULL;
   OSSL_PARAM params[2] = {OSSL_PARAM_END, OSSL_PARAM_END};
@@ -93,7 +93,7 @@ void encrypt_block(const Block *block_to_encrypt,
   EVP_CIPHER_CTX_free(cipher_ctx);
 }
 
-void decrypt_block(const EncryptedBlock *block_to_decrypt,
+void CRYPTO_decrypt_block(const EncryptedBlock *block_to_decrypt,
                    Block *decrypted_block_output) {
   if (!cryptoIsInitialized) {
     fprintf(stderr, "Invoked decryption without initializing crypto first.\n");

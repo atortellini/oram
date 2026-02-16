@@ -179,7 +179,7 @@ static size_t read_bucket_from_server(uint32_t bucket_id,
   for (size_t i = 0; i < NUM_BLOCKS_PER_BUCKET; i++) {
     const EncryptedBlock *encrypted_block = &encrypted_bucket->blocks[i];
     Block decrypted_block;
-    decrypt_block(encrypted_block, &decrypted_block);
+    CRYPTO_decrypt_block(encrypted_block, &decrypted_block);
     if (is_dummy_block(&decrypted_block)) {
       continue;
     } else {
@@ -219,7 +219,7 @@ static void write_bucket_to_server(uint32_t bucket_id, Block blocks[],
   for (size_t i = 0; i < NUM_BLOCKS_PER_BUCKET; i++) {
     const Block *block_to_encrypt = &plaintext_blocks[i];
     EncryptedBlock *encrypted_block_output = &encrypted_bucket.blocks[i];
-    encrypt_block(block_to_encrypt, encrypted_block_output);
+    CRYPTO_encrypt_block(block_to_encrypt, encrypted_block_output);
   }
   SERVER_write_bucket(bucket_id, &encrypted_bucket);
 }
