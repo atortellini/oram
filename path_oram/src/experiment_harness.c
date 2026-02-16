@@ -34,17 +34,31 @@ void perform_experiments(const uint32_t query_size) {
   generate_ranged_point_query_access_sequence(query_size);
 
   struct timespec elapsed_time;
+  uint8_t returned_data[NUM_BYTES_PER_BLOCK];
   for (size_t i = 0; i < NUM_EXPERIMENT_ACCESSES; i++) {
-    TIME_VOID_FUNC(&elapsed_time,
-                   CLIENT_access(access_sequence_buffer[i], READ, NULL, NULL));
+    const uint8_t *expected_data =
+        synthetic_dataset + (access_sequence_buffer[i] * NUM_BYTES_PER_BLOCK);
+    TIME_VOID_FUNC(&elapsed_time, CLIENT_access(access_sequence_buffer[i], READ,
+                                                NULL, returned_data));
+    if (memcmp(expected_data, returned_data, NUM_BYTES_PER_BLOCK) != 0) {
+      fprintf(stderr, "Comparison of data found for block: %u differs from expected.", access_sequence_buffer[i]);
+    }
+    fprintf(stdout, "Access for block: %u took: %ld s %ld ns\n",
+            access_sequence_buffer[i], elapsed_time.tv_sec,
+            elapsed_time.tv_nsec);
     // DO SOMETHING WITH THIS TIMING INFORMATION LIKE WRITING TO A LOG FILE OR
     // SOMETHING
   }
 }
 
 static void prepare_synthetic_data(void) {
-  generate_synthetic_data();
-  insert_synthetic_data_into_server();
+  struct timespec e;
+  TIME_VOID_FUNC(&e, generate_synthetic_data());
+  fprintf(stdout, "Finished generating synthetic data in: %ld s %ld ns\n",
+          e.tv_sec, e.tv_nsec);
+  TIME_VOID_FUNC(&e, insert_synthetic_data_into_server());
+  fprintf(stdout, "Finished inserting synthetic data in: %ld s %ld ns\n",
+          e.tv_sec, e.tv_nsec);
 }
 
 static void generate_synthetic_data(void) {
