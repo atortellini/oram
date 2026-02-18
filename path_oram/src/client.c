@@ -29,7 +29,7 @@ static bool is_dummy_block(Block *block);
 static void write_bucket_to_server(uint32_t bucket_id, Block blocks[],
                                    size_t num_blocks);
 
-void CLIENT_setup() {
+void CLIENT_setup(void) {
   initialize_dummy_block();
   fill_position_map_with_random_paths();
   fill_server_with_dummies();
