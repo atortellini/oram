@@ -64,8 +64,11 @@ void CRYPTO_encrypt_block(const Block *block_to_encrypt,
     exit(EXIT_FAILURE);
   }
 
+  const uint8_t *bytes_to_encrypt = (const uint8_t *)block_to_encrypt;
+  const size_t num_bytes_to_encrypt = NUM_BYTES_PER_BLOCK_AND_METADATA;
+
   if (!EVP_EncryptUpdate(cipher_ctx, outbuffer, &outbuffer_count,
-                         block_to_encrypt, sizeof(Block))) {
+                         bytes_to_encrypt, num_bytes_to_encrypt)) {
     fprintf(stderr, "Failed to encrypt plaintext.\n");
     exit(EXIT_FAILURE);
   }
@@ -119,8 +122,9 @@ void CRYPTO_decrypt_block(const EncryptedBlock *block_to_decrypt,
     exit(EXIT_FAILURE);
   }
 
+  const size_t num_bytes_to_decrypt = NUM_BYTES_PER_BLOCK_AND_METADATA;
   if (!EVP_DecryptUpdate(cipher_ctx, outbuffer, &outbuffer_count,
-                         ciphertext_ptr, sizeof(Block))) {
+                         ciphertext_ptr, num_bytes_to_decrypt)) {
     fprintf(stderr, "Failed to decrypt ciphertext.\n");
     exit(EXIT_FAILURE);
   }
