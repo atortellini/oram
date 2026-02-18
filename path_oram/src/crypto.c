@@ -107,7 +107,10 @@ void CRYPTO_decrypt_block(const EncryptedBlock *block_to_decrypt,
 
   const uint8_t *iv_ptr = block_to_decrypt->data;
   const uint8_t *ciphertext_ptr = iv_ptr + AES_IV_SIZE_BYTES;
-  const uint8_t *tag_ptr = ciphertext_ptr + NUM_BYTES_PER_BLOCK_AND_METADATA;
+  const uint8_t *tag_src_ptr = ciphertext_ptr + NUM_BYTES_PER_BLOCK_AND_METADATA;
+  uint8_t tag_copy[AES_TAG_SIZE_BYTES];
+  memcpy(tag_copy, tag_src_ptr, AES_TAG_SIZE_BYTES);
+
   uint8_t outbuffer[NUM_BYTES_PER_BLOCK_AND_METADATA];
   int outbuffer_count = 0;
   int tmplen = 0;
@@ -130,7 +133,7 @@ void CRYPTO_decrypt_block(const EncryptedBlock *block_to_decrypt,
   }
 
   params[0] = OSSL_PARAM_construct_octet_string(OSSL_CIPHER_PARAM_AEAD_TAG,
-                                                tag_ptr, AES_TAG_SIZE_BYTES);
+                                                tag_copy, AES_TAG_SIZE_BYTES);
 
   if (!EVP_CIPHER_CTX_set_params(cipher_ctx, params)) {
     fprintf(stderr, "Failed to set expected tag for decryption.\n");
