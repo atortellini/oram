@@ -13,12 +13,19 @@
 
 #define min(X, Y) ((X) < (Y) ? (X) : (Y))
 
+typedef struct {
+  uint32_t queries[QUERY_RANGE_SIZE];
+} Access;
+
+static uint8_t synthetic_dataset[NUM_TOTAL_REAL_BLOCKS * NUM_BYTES_PER_BLOCK];
+static Access access_sequence_buffer[NUM_EXPERIMENT_ACCESSES];
+
 static void prepare_synthetic_data(void);
 static void generate_synthetic_data(void);
 static void insert_synthetic_data_into_server(void);
 
-static void
-generate_ranged_point_query_access_sequence(const uint32_t query_size);
+static void generate_ranged_point_query_access_sequence(void);
+static void perform_access(const uint32_t access_index);
 // also need to think about for the experiments if I would want it to be a
 // random number of writes/reads being performed on random blocks or if there
 // should be parameters to specify how many reads/writes, what blocks to access,
@@ -29,23 +36,17 @@ generate_ranged_point_query_access_sequence(const uint32_t query_size);
 // order pre generated, along with predetermining whether a read/write should
 // occur and if a write, already generating the new data that should be written.
 
-void perform_experiments(const uint32_t query_size) {
+void perform_experiments(void) {
   prepare_synthetic_data();
-  generate_ranged_point_query_access_sequence(query_size);
+  generate_ranged_point_query_access_sequence();
 
   struct timespec elapsed_time;
-  uint8_t returned_data[NUM_BYTES_PER_BLOCK];
-  for (size_t i = 0; i < NUM_EXPERIMENT_ACCESSES; i++) {
-    const uint8_t *expected_data =
-        synthetic_dataset + (access_sequence_buffer[i] * NUM_BYTES_PER_BLOCK);
-    TIME_VOID_FUNC(&elapsed_time, CLIENT_access(access_sequence_buffer[i], READ,
-                                                NULL, returned_data));
-    if (memcmp(expected_data, returned_data, NUM_BYTES_PER_BLOCK) != 0) {
-      fprintf(stderr, "Comparison of data found for block: %u differs from expected.", access_sequence_buffer[i]);
-    }
-    fprintf(stdout, "Access for block: %u took: %ld s %ld ns\n",
-            access_sequence_buffer[i], elapsed_time.tv_sec,
-            elapsed_time.tv_nsec);
+
+  for (size_t access_index = 0; access_index < NUM_EXPERIMENT_ACCESSES;
+       access_index++) {
+    TIME_VOID_FUNC(&elapsed_time, perform_access(access_index));
+    fprintf(stdout, "Access %lu took: %ld s %ld ns\n", access_index,
+            elapsed_time.tv_sec, elapsed_time.tv_nsec);
     // DO SOMETHING WITH THIS TIMING INFORMATION LIKE WRITING TO A LOG FILE OR
     // SOMETHING
   }
@@ -73,25 +74,35 @@ static void insert_synthetic_data_into_server(void) {
   }
 }
 
-static void
-generate_ranged_point_query_access_sequence(const uint32_t query_size) {
-  uint32_t curr_index = 0;
-
-  while (curr_index < NUM_EXPERIMENT_ACCESSES) {
-    const uint32_t arr_size_left = NUM_EXPERIMENT_ACCESSES - curr_index;
-
-    const uint32_t max_query_size = min(arr_size_left, query_size);
-    const uint32_t range_query_size = uniform_random(max_query_size) + 1;
-
+static void generate_ranged_point_query_access_sequence(void) {
+  for (size_t access_index = 0; access_index < NUM_EXPERIMENT_ACCESSES;
+       access_index++) {
     const uint32_t start_block_range_id = uniform_random(NUM_TOTAL_REAL_BLOCKS);
-
-    for (size_t i = 0; i < range_query_size; i++) {
-      access_sequence_buffer[curr_index++] =
-          (start_block_range_id + i) % NUM_TOTAL_REAL_BLOCKS;
+    for (size_t query_num = 0; query_num < QUERY_RANGE_SIZE; query_num++) {
+      access_sequence_buffer[access_index].queries[query_num] =
+          (start_block_range_id + query_num) % NUM_TOTAL_REAL_BLOCKS;
     }
   }
 }
 
+static void perform_access(const uint32_t access_index) {
+  const Access *access = &access_sequence_buffer[access_index];
+  uint8_t returned_data[NUM_BYTES_PER_BLOCK];
+
+  for (size_t query_index = 0; query_index < QUERY_RANGE_SIZE; query_index++) {
+    const uint32_t query_block_id = access->queries[query_index];
+    const uint8_t *expected_data =
+        &synthetic_dataset[query_block_id * NUM_BYTES_PER_BLOCK];
+    CLIENT_access(query_block_id, READ, NULL, returned_data);
+
+    if (memcmp(expected_data, returned_data, NUM_BYTES_PER_BLOCK) != 0) {
+      fprintf(stderr,
+              "Comparison of data for block: %u differs from expected.\n",
+              query_block_id);
+      exit(EXIT_FAILURE);
+    }
+  }
+}
 // I have an array of NUM_EXPERIMENT_ACCESSES size where, on each step, I want
 // to fill out a range of [1, QUERY_SIZE]. thinking of this recursively I have
 // something like this: fill_array(curr_index, arr_size_left, query_size) if

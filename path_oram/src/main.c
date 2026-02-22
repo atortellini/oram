@@ -5,5 +5,7 @@
 int main(void) {
   CRYPTO_init();
   CLIENT_setup();
-  perform_experiments(1);
+  perform_experiments();
+
+  return 0;
 }

@@ -3,6 +3,6 @@
 
 #include <stdint.h>
 
-void perform_experiments(const uint32_t query_size);
+void perform_experiments(void);
 
 #endif
