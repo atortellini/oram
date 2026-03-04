@@ -8,6 +8,7 @@
 #include "constants.h"
 #include "globals.h"
 #include "rand.h"
+#include "stash.h"
 #include "types.h"
 
 #define min(X, Y) ((X) < (Y) ? (X) : (Y))
@@ -180,7 +181,7 @@ static void fill_bucket_with_blocks_from_stash_intersecting_path_at_level(
 
     if (candidatePathIntersectsEvictedPath) {
       bucket_buffer[found_block_counter++] = *candidate_block;
-      STASH_remove_block(oram->stash, i);
+      STASH_remove_block(&oram->stash, i);
       const bool bucketBufferIsFull =
           found_block_counter == NUM_BLOCKS_PER_BUCKET;
       if (bucketBufferIsFull) {

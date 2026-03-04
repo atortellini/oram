@@ -8,6 +8,7 @@
 
 #include "constants.h"
 #include "globals.h"
+#include "stash.h"
 #include "suboram.h"
 
 void RORAM_init(RORAM *roram) {
