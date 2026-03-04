@@ -29,12 +29,4 @@ typedef struct position_map_t {
   uint32_t *map; // this will be a pointer to an array of size N/(2^i)
 } POSITION_MAP;
 
-typedef struct stash_t {
-  size_t num_blocks;
-  BLOCK stash[STASH_SIZE];
-} STASH;
-
-
-
-
 #endif

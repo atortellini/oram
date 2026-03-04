@@ -1,0 +1,16 @@
+#ifndef STASH_H
+#define STASH_H
+
+#include "types.h"
+#include <stdint.h>
+
+typedef struct stash_t {
+  size_t num_blocks;
+  BLOCK stash[STASH_SIZE];
+} STASH;
+
+void STASH_remove_block(STASH *stash, uint32_t index);
+
+void STASH_add_block(STASH *stash, BLOCK *block);
+
+#endif
