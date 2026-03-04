@@ -5,8 +5,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "globals.h"
 #include "constants.h"
+#include "globals.h"
 #include "rand.h"
 #include "types.h"
 
@@ -14,10 +14,13 @@
 
 void SUBORAM_init(SUBORAM *oram, const size_t suboram_index) {
   oram->oram_index = suboram_index;
-  const size_t num_pmap_entries = 1 << (HEIGHT_OF_TREE - suboram_index);
+  const uint32_t num_pmap_entries = 1 << (HEIGHT_OF_TREE - suboram_index);
   uint32_t *new_pmap = (uint32_t *)malloc(sizeof(*new_pmap) * num_pmap_entries);
   assert(new_pmap);
+
   oram->pm.map = new_pmap;
+
+  fill_pmap_random_base_paths(&oram->pm, num_pmap_entries);
 }
 
 // assumes that results pointer will be of size range_size (2^i for subram R_i)
@@ -345,5 +348,12 @@ static void filter_and_record_new_blocks(BLOCK *blocks, const size_t num_blocks,
         results[address_offset] = *current_block;
       }
     }
+  }
+}
+
+static void fill_pmap_random_base_paths(POSITION_MAP *pm,
+                                        uint32_t num_entries) {
+  for (uint32_t i = 0; i < num_entries; i++) {
+    pm->map[i] = uniform_random(NUM_TOTAL_REAL_BLOCKS);
   }
 }
