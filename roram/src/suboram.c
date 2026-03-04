@@ -6,6 +6,7 @@
 #include <stdlib.h>
 
 #include "constants.h"
+#include "crypto.h"
 #include "globals.h"
 #include "rand.h"
 #include "server.h"
