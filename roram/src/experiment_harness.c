@@ -83,7 +83,7 @@ static void generate_range_query_access_sequence(void) {
 
   for (size_t access_index = 0; access_index < NUM_EXPERIMENT_ACCESSES;
        access_index++) {
-    const uint32_t start_block_range_id =
+    access_sequence_buffer[access_index].base_address =
         uniform_random(base_address_upper_bound);
   }
 }
@@ -96,7 +96,7 @@ static void perform_access(const uint32_t access_index) {
   const uint8_t *expected_data =
       &synthetic_dataset[query_base_address * NUM_DATA_BYTES_PER_BLOCK];
   CLIENT_access(query_base_address, QUERY_RANGE_SIZE_AS_POWER_OF_2, READ, NULL,
-                &returned_data);
+                returned_data);
 
   if (memcmp(expected_data, returned_data,
              NUM_DATA_BYTES_PER_BLOCK * QUERY_RANGE_SIZE) != 0) {

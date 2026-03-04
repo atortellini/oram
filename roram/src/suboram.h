@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "stash.h"
 #include "types.h"
 
 typedef struct suboram_t {
@@ -19,8 +20,8 @@ uint32_t SUBORAM_read_range(SUBORAM *oram, const uint32_t address,
 
 void SUBORAM_batch_evict(SUBORAM *oram, const size_t num_evictions);
 
-const uint32_t SUBORAM_query_position_map(SUBORAM *suboram,
-                                          const uint32_t address);
+uint32_t SUBORAM_query_position_map(const SUBORAM *suboram,
+                                    const uint32_t address);
 
 void SUBORAM_update_position_map(SUBORAM *suboram, const uint32_t address,
                                  const uint32_t new_path);
