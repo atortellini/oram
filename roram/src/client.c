@@ -39,7 +39,6 @@ void CLIENT_access(const uint32_t address, const uint32_t range_size_power_of_2,
                    uint8_t *old_data) {
   if (op == WRITE)
     assert(new_data);
-  assert(old_data);
 
   RORAM_access(&rORAM, address, range_size_power_of_2, op, new_data, old_data);
 }

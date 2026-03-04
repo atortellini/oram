@@ -25,7 +25,7 @@ void RORAM_init(RORAM *roram) {
 // of 2.
 void RORAM_access(RORAM *roram, const uint32_t address,
                   const uint32_t range_size_power_of_two, const OPERATION op,
-                  const uint8_t *new_data, const uint8_t *old_data) {
+                  const uint8_t *new_data, uint8_t *old_data) {
 
   const uint32_t range_size = 1U << range_size_power_of_two;
   const uint32_t suboram_index = range_size_power_of_two;
@@ -71,14 +71,20 @@ void RORAM_access(RORAM *roram, const uint32_t address,
   const uint32_t address_offset = address - boundary_aligned_base_address;
   BLOCK *interested_blocks = retrieved_data + address_offset;
 
-  for (uint32_t i = 0; i < range_size; i++) {
-    const uint32_t data_arr_offset = i * NUM_DATA_BYTES_PER_BLOCK;
-    BLOCK *interested_block = &interested_blocks[i];
-    memcpy(old_data + data_arr_offset, interested_block->data,
-           NUM_DATA_BYTES_PER_BLOCK);
-    if (op == WRITE) {
-      memcpy(interested_block->data, new_data + data_arr_offset,
-             NUM_DATA_BYTES_PER_BLOCK);
+  const bool wantsOldData = old_data != NULL;
+  const bool writingNewData = op == WRITE;
+  if (wantsOldData || writingNewData) {
+    for (uint32_t i = 0; i < range_size; i++) {
+      const uint32_t data_arr_offset = i * NUM_DATA_BYTES_PER_BLOCK;
+      BLOCK *interested_block = &interested_blocks[i];
+      if (wantsOldData) {
+        memcpy(old_data + data_arr_offset, interested_block->data,
+               NUM_DATA_BYTES_PER_BLOCK);
+      }
+      if (writingNewData) {
+        memcpy(interested_block->data, new_data + data_arr_offset,
+               NUM_DATA_BYTES_PER_BLOCK);
+      }
     }
   }
 
