@@ -18,7 +18,7 @@ typedef struct bucket_t {
 } BUCKET;
 
 typedef struct encrypted_block_t {
-  uint8_t block[NUM_BYTES_PER_ENCRYPTED_BLOCK];
+  uint8_t data[NUM_BYTES_PER_ENCRYPTED_BLOCK];
 } ENCRYPTED_BLOCK;
 
 typedef struct encrypted_bucket_t {
