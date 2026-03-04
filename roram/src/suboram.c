@@ -8,6 +8,7 @@
 #include "constants.h"
 #include "globals.h"
 #include "rand.h"
+#include "server.h"
 #include "stash.h"
 #include "types.h"
 
