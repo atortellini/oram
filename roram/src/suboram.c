@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "globals.h"
 #include "constants.h"
 #include "rand.h"
 #include "types.h"
@@ -13,10 +14,7 @@
 
 void SUBORAM_init(SUBORAM *oram, const size_t suboram_index) {
   oram->oram_index = suboram_index;
-  const size_t num_pmap_entries =
-      NUM_TOTAL_REAL_BLOCKS /
-      (1 << suboram_index); // or could just do height of tree minus suboram
-                            // index.
+  const size_t num_pmap_entries = 1 << (HEIGHT_OF_TREE - suboram_index);
   uint32_t *new_pmap = (uint32_t *)malloc(sizeof(*new_pmap) * num_pmap_entries);
   assert(new_pmap);
   oram->pm.map = new_pmap;
@@ -27,9 +25,9 @@ uint32_t SUBORAM_read_range(SUBORAM *oram, const uint32_t address,
                             BLOCK *results, bool *addresses_found_map) {
 
   const uint32_t range_size = 1U << oram->oram_index;
-  const uint32_t range_start_tag = oram->pm.map[address];
+  const uint32_t range_start_tag = SUBORAM_query_position_map(oram, address);
   const uint32_t new_range_tag = uniform_random(NUM_TOTAL_REAL_BLOCKS);
-  oram->pm.map[address] = new_range_tag;
+  SUBORAM_update_position_map(oram, address, new_range_tag);
 
   find_and_record_blocks_found_in_range_from_stash(
       &oram->stash, results, addresses_found_map, address, range_size);
@@ -53,7 +51,7 @@ void SUBORAM_batch_evict(SUBORAM *oram, const size_t num_evictions) {
     assert(blocks_found);
 
     const size_t num_blocks_found = read_buckets_at_level_along_paths(
-        oram, level, eviction_counter, num_evictions, blocks_found);
+        oram, level, EVICTION_COUNTER, num_evictions, blocks_found);
 
     insert_new_blocks_into_stash(&oram->stash, blocks_found, num_blocks_found);
 
@@ -83,18 +81,43 @@ void SUBORAM_batch_evict(SUBORAM *oram, const size_t num_evictions) {
 
     for (uint32_t path_offset = 0; path_offset < bounded_num_unique_paths;
          path_offset++) {
-      const uint32_t path = eviction_counter + path_offset;
+      const uint32_t path = EVICTION_COUNTER + path_offset;
       BLOCK *bucket_buffer = new_buckets_at_level[path_offset].blocks;
 
       fill_bucket_with_blocks_from_stash_intersecting_path_at_level(
           oram, bucket_buffer, path, level);
     }
 
-    write_bucket_range_to_server(oram, new_buckets_at_level, eviction_counter,
+    write_bucket_range_to_server(oram, new_buckets_at_level, EVICTION_COUNTER,
                                  bounded_num_unique_paths, level);
 
     free(new_buckets_at_level);
   }
+}
+
+const uint32_t SUBORAM_query_position_map(const SUBORAM *suboram,
+                                          const uint32_t address) {
+  const uint32_t range_size = 1U << suboram->oram_index;
+  const uint32_t range_number_containing_address = address / range_size;
+  const uint32_t range_base_address =
+      range_number_containing_address * range_size;
+  const uint32_t address_offset = address - range_base_address;
+
+  const uint32_t range_base_path =
+      suboram->pm.map[range_number_containing_address];
+  return range_base_path + address_offset;
+}
+
+void SUBORAM_update_position_map(SUBORAM *suboram, const uint32_t address,
+                                 const uint32_t new_path) {
+  const uint32_t range_size = 1U << suboram->oram_index;
+  const uint32_t range_number_containing_address = address / range_size;
+  const uint32_t range_base_address =
+      range_number_containing_address * range_size;
+  const uint32_t address_offset = address - range_base_address;
+
+  const uint32_t new_range_base_path = new_path - address_offset;
+  suboram->pm.map[range_number_containing_address] = new_range_base_path;
 }
 
 static void write_bucket_range_to_server(const SUBORAM *oram,
