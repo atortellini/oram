@@ -20,6 +20,6 @@ typedef enum operation_t { READ, WRITE } OPERATION;
 // of 2.
 void RORAM_access(RORAM *roram, const uint32_t address,
                   const uint32_t range_size_power_of_two, const OPERATION op,
-                  const uint8_t *new_data, const uint8_t *old_data);
+                  const uint8_t *new_data, uint8_t *old_data);
 
 #endif
