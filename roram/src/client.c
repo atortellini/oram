@@ -2,13 +2,18 @@
 
 #include <assert.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "constants.h"
 #include "crypto.h"
 #include "globals.h"
+#include "rand.h"
 #include "roram.h"
 #include "server.h"
 #include "types.h"
+
+static void initialize_dummy_block(void);
+static void fill_server_with_dummies(void);
 
 void CLIENT_init(void) {
   CRYPTO_init();

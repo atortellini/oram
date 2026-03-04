@@ -15,6 +15,42 @@
 
 #define min(X, Y) ((X) < (Y) ? (X) : (Y))
 
+static void write_bucket_range_to_server(const SUBORAM *oram,
+                                         const BUCKET *buckets,
+                                         const uint32_t base_path,
+                                         const uint32_t num_buckets,
+                                         const uint32_t level);
+
+static void encrypt_buckets(const BUCKET *plaintext_buckets,
+                            ENCRYPTED_BUCKET *encrypted_buckets,
+                            const uint32_t num_buckets);
+
+static void fill_bucket_with_blocks_from_stash_intersecting_path_at_level(
+    SUBORAM *oram, BLOCK *bucket_buffer, const uint32_t path_tag,
+    const uint32_t level);
+static void insert_new_blocks_into_stash(STASH *stash, BLOCK *new_blocks,
+                                         const size_t num_blocks);
+static bool is_block_in_stash(const STASH *stash, const BLOCK *block);
+static void find_and_record_blocks_found_in_range_from_stash(
+    const STASH *stash, BLOCK *results, bool *addresses_found_map,
+    const uint32_t base_address, const uint32_t range_size);
+static void fetch_and_record_new_blocks_in_range_from_server(
+    SUBORAM *oram, BLOCK *results, bool *addresses_found_map,
+    const uint32_t base_address, const uint32_t range_start_tag,
+    const uint32_t range_size);
+static size_t read_buckets_at_level_along_paths(const SUBORAM *oram,
+                                                const size_t level,
+                                                const uint32_t range_start_tag,
+                                                const uint32_t range_size,
+                                                BLOCK *blocks_found);
+static bool is_dummy_block(BLOCK *block);
+static void filter_and_record_new_blocks(BLOCK *blocks, const size_t num_blocks,
+                                         BLOCK *results,
+                                         const uint32_t base_address,
+                                         const uint32_t range_size,
+                                         bool *addresses_found_map);
+static void fill_pmap_random_base_paths(POSITION_MAP *pm, uint32_t num_entries);
+
 void SUBORAM_init(SUBORAM *oram, const size_t suboram_index) {
   oram->oram_index = suboram_index;
   const uint32_t num_pmap_entries = 1 << (HEIGHT_OF_TREE - suboram_index);
@@ -101,8 +137,8 @@ void SUBORAM_batch_evict(SUBORAM *oram, const size_t num_evictions) {
   }
 }
 
-const uint32_t SUBORAM_query_position_map(const SUBORAM *suboram,
-                                          const uint32_t address) {
+uint32_t SUBORAM_query_position_map(const SUBORAM *suboram,
+                                    const uint32_t address) {
   const uint32_t range_size = 1U << suboram->oram_index;
   const uint32_t range_number_containing_address = address / range_size;
   const uint32_t range_base_address =
@@ -210,13 +246,13 @@ static void insert_new_blocks_into_stash(STASH *stash, BLOCK *new_blocks,
     if (is_block_in_stash(stash, block_to_add)) {
       continue;
     } else {
-      STASH_add(stash, block_to_add);
+      STASH_add_block(stash, block_to_add);
     }
   }
 }
 
 static bool is_block_in_stash(const STASH *stash, const BLOCK *block) {
-  const target_block_address = block->block_address;
+  const uint32_t target_block_address = block->block_address;
   for (size_t i = 0; i < stash->num_blocks; i++) {
     const BLOCK *current_block = &stash->stash[i];
     if (current_block->block_address == target_block_address)

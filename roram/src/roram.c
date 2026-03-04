@@ -11,6 +11,16 @@
 #include "stash.h"
 #include "suboram.h"
 
+static void create_new_block(RORAM *roram, BLOCK *block,
+                             const uint32_t base_address);
+static void add_blocks_to_stash(STASH *stash, const BLOCK *blocks_to_add,
+                                const uint32_t num_blocks);
+static void find_and_remove_blocks_in_range_from_stash(
+    STASH *stash, const uint32_t base_address, const uint32_t range_size);
+static void update_blocks_path_tags(BLOCK *blocks, const uint32_t suboram_index,
+                                    const uint32_t range_size,
+                                    const uint32_t new_base_path);
+
 void RORAM_init(RORAM *roram) {
   for (size_t i = 0; i < NUM_SUBORAMS; i++) {
     SUBORAM *current_suboram = &roram->subORAMs[i];
@@ -40,7 +50,7 @@ void RORAM_access(RORAM *roram, const uint32_t address,
       (bool *)calloc(range_size * 2, sizeof(*addresses_found_map));
   assert(addresses_found_map);
 
-  const SUBORAM *suboram = &roram->subORAMs[suboram_index];
+  SUBORAM *suboram = &roram->subORAMs[suboram_index];
 
   const uint32_t first_range_new_path =
       SUBORAM_read_range(suboram, boundary_aligned_base_address, retrieved_data,
