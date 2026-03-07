@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -52,30 +53,45 @@ void RORAM_access(RORAM *roram, const uint32_t address,
 
   SUBORAM *suboram = &roram->subORAMs[suboram_index];
 
-  const uint32_t first_range_new_path =
-      SUBORAM_read_range(suboram, boundary_aligned_base_address, retrieved_data,
-                         addresses_found_map);
+  const uint32_t first_range_base_address = boundary_aligned_base_address;
+  BLOCK *first_range_retrieved_block_buffer = retrieved_data;
+  bool *first_range_address_found_map = addresses_found_map;
 
+  const uint32_t second_range_base_address =
+      (first_range_base_address + range_size) % NUM_TOTAL_REAL_BLOCKS;
+  BLOCK *second_range_retrieved_block_buffer = retrieved_data + range_size;
+  bool *second_range_address_found_map = addresses_found_map + range_size;
+
+  const bool rangesWraparound =
+      second_range_base_address < first_range_base_address;
+
+  // fprintf(
+  //     stderr, "[RORAM]: [ACCESS] ADDR: %u RNG: %u 1R_ADDR: %u 2R_ADDR: %u\n",
+  //     address, range_size, first_range_base_address, second_range_base_address);
+
+  const uint32_t first_range_new_path = SUBORAM_read_range(
+      suboram, first_range_base_address, first_range_retrieved_block_buffer,
+      first_range_address_found_map);
   const uint32_t second_range_new_path = SUBORAM_read_range(
-      suboram, boundary_aligned_base_address + range_size,
-      retrieved_data + range_size, addresses_found_map + range_size);
+      suboram, second_range_base_address, second_range_retrieved_block_buffer,
+      second_range_address_found_map);
 
   for (uint32_t address_offset = 0; address_offset < (range_size * 2);
        address_offset++) {
-
-    const uint32_t current_address =
-        boundary_aligned_base_address + address_offset;
-
-    const bool addressNotFound = addresses_found_map[address_offset];
+    const bool addressNotFound = !addresses_found_map[address_offset];
     if (addressNotFound) {
+      const uint32_t current_address =
+          (boundary_aligned_base_address + address_offset) %
+          NUM_TOTAL_REAL_BLOCKS;
+      // fprintf(stderr, "Creating new block for address: %u\n", current_address);
       BLOCK *new_block = &retrieved_data[address_offset];
       create_new_block(roram, new_block, current_address);
     }
   }
 
-  update_blocks_path_tags(retrieved_data, suboram_index, range_size,
-                          first_range_new_path);
-  update_blocks_path_tags(retrieved_data + range_size, suboram_index,
+  update_blocks_path_tags(first_range_retrieved_block_buffer, suboram_index,
+                          range_size, first_range_new_path);
+  update_blocks_path_tags(second_range_retrieved_block_buffer, suboram_index,
                           range_size, second_range_new_path);
 
   const uint32_t address_offset = address - boundary_aligned_base_address;
@@ -102,13 +118,21 @@ void RORAM_access(RORAM *roram, const uint32_t address,
     SUBORAM *suboram_to_update = &roram->subORAMs[i];
     STASH *stash_to_update = &suboram_to_update->stash;
 
-    find_and_remove_blocks_in_range_from_stash(
-        stash_to_update, boundary_aligned_base_address, range_size * 2);
+    if (rangesWraparound) {
+      find_and_remove_blocks_in_range_from_stash(
+          stash_to_update, first_range_base_address, range_size);
+      find_and_remove_blocks_in_range_from_stash(
+          stash_to_update, second_range_base_address, range_size);
+    } else {
+      find_and_remove_blocks_in_range_from_stash(
+          stash_to_update, boundary_aligned_base_address, range_size * 2);
+    }
     add_blocks_to_stash(stash_to_update, retrieved_data, range_size * 2);
     SUBORAM_batch_evict(suboram_to_update, range_size * 2);
   }
 
   EVICTION_COUNTER += (range_size * 2);
+  EVICTION_COUNTER %= NUM_TOTAL_REAL_BLOCKS;
 
   free(retrieved_data);
   free(addresses_found_map);
