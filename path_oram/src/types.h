@@ -1,6 +1,7 @@
 #ifndef TYPES_H
 #define TYPES_H
 
+#include "../../parameters/parameters.h"
 #include "constants.h"
 #include <stddef.h>
 #include <stdint.h>
@@ -8,7 +9,7 @@
 typedef struct {
   uint32_t block_id;
   uint32_t path_id;
-  uint8_t data[NUM_BYTES_PER_BLOCK];
+  uint8_t data[NUM_DATA_BYTES_PER_BLOCK];
 } Block;
 
 typedef struct {

@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../../parameters/parameters.h"
+#include "constants.h"
 #include "crypto.h"
 #include "globals.h"
 #include "rand.h"
@@ -53,11 +55,11 @@ void CLIENT_access(uint32_t target_block_id, OP_t operation, uint8_t new_data[],
       Block new_block;
       new_block.block_id = target_block_id;
       new_block.path_id = new_path_id;
-      memcpy(new_block.data, new_data, NUM_BYTES_PER_BLOCK);
+      memcpy(new_block.data, new_data, NUM_DATA_BYTES_PER_BLOCK);
 
       STASH_add_block(&new_block);
       if (wantsOldData) {
-        memset(old_data, 0, NUM_BYTES_PER_BLOCK);
+        memset(old_data, 0, NUM_DATA_BYTES_PER_BLOCK);
       }
     } else {
       fprintf(stderr,
@@ -68,11 +70,11 @@ void CLIENT_access(uint32_t target_block_id, OP_t operation, uint8_t new_data[],
     }
   } else {
     if (wantsOldData) {
-      memcpy(old_data, target_block->data, NUM_BYTES_PER_BLOCK);
+      memcpy(old_data, target_block->data, NUM_DATA_BYTES_PER_BLOCK);
     }
     target_block->path_id = new_path_id;
     if (operationIsWrite) {
-      memcpy(target_block->data, new_data, NUM_BYTES_PER_BLOCK);
+      memcpy(target_block->data, new_data, NUM_DATA_BYTES_PER_BLOCK);
     }
   }
 
@@ -82,7 +84,7 @@ void CLIENT_access(uint32_t target_block_id, OP_t operation, uint8_t new_data[],
 static void initialize_dummy_block(void) {
   DUMMY_BLOCK.block_id = UINT32_MAX;
   DUMMY_BLOCK.path_id = 0;
-  generate_random_bytes(DUMMY_BLOCK.data, NUM_BYTES_PER_BLOCK);
+  generate_random_bytes(DUMMY_BLOCK.data, NUM_DATA_BYTES_PER_BLOCK);
 }
 
 static void fill_position_map_with_random_paths(void) {
