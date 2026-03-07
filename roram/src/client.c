@@ -25,7 +25,7 @@ void CLIENT_init(void) {
 
 static void initialize_dummy_block(void) {
   DUMMY_BLOCK.block_address = UINT32_MAX;
-  memset(DUMMY_BLOCK.path_tags, 0, NUM_SUBORAMS);
+  memset(DUMMY_BLOCK.path_tags, 0, sizeof(DUMMY_BLOCK.path_tags));
   generate_random_bytes(DUMMY_BLOCK.data, NUM_DATA_BYTES_PER_BLOCK);
 }
 
