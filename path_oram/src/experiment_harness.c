@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../../parameters/parameters.h"
 #include "client.h"
 #include "constants.h"
 #include "globals.h"
@@ -17,7 +18,8 @@ typedef struct {
   uint32_t queries[QUERY_RANGE_SIZE];
 } Access;
 
-static uint8_t synthetic_dataset[NUM_TOTAL_REAL_BLOCKS * NUM_BYTES_PER_BLOCK];
+static uint8_t
+    synthetic_dataset[NUM_TOTAL_REAL_BLOCKS * NUM_DATA_BYTES_PER_BLOCK];
 static Access access_sequence_buffer[NUM_EXPERIMENT_ACCESSES];
 
 static void prepare_synthetic_data(void);
@@ -64,12 +66,12 @@ static void prepare_synthetic_data(void) {
 
 static void generate_synthetic_data(void) {
   generate_random_bytes(synthetic_dataset,
-                        NUM_TOTAL_REAL_BLOCKS * NUM_BYTES_PER_BLOCK);
+                        NUM_TOTAL_REAL_BLOCKS * NUM_DATA_BYTES_PER_BLOCK);
 }
 
 static void insert_synthetic_data_into_server(void) {
   for (size_t i = 0; i < NUM_TOTAL_REAL_BLOCKS; i++) {
-    const uint32_t block_data_index = i * NUM_BYTES_PER_BLOCK;
+    const uint32_t block_data_index = i * NUM_DATA_BYTES_PER_BLOCK;
     CLIENT_access(i, WRITE, &synthetic_dataset[block_data_index], NULL);
   }
 }
@@ -77,7 +79,7 @@ static void insert_synthetic_data_into_server(void) {
 static void generate_ranged_point_query_access_sequence(void) {
   for (size_t access_index = 0; access_index < NUM_EXPERIMENT_ACCESSES;
        access_index++) {
-    const uint32_t start_block_range_id = uniform_random(NUM_TOTAL_REAL_BLOCKS);
+    const uint32_t start_block_range_id = uniform_random(NUM_TOTAL_REAL_BLOCKS - (QUERY_RANGE_SIZE - 1));
     for (size_t query_num = 0; query_num < QUERY_RANGE_SIZE; query_num++) {
       access_sequence_buffer[access_index].queries[query_num] =
           (start_block_range_id + query_num) % NUM_TOTAL_REAL_BLOCKS;
@@ -87,15 +89,15 @@ static void generate_ranged_point_query_access_sequence(void) {
 
 static void perform_access(const uint32_t access_index) {
   const Access *access = &access_sequence_buffer[access_index];
-  uint8_t returned_data[NUM_BYTES_PER_BLOCK];
+  uint8_t returned_data[NUM_DATA_BYTES_PER_BLOCK];
 
   for (size_t query_index = 0; query_index < QUERY_RANGE_SIZE; query_index++) {
     const uint32_t query_block_id = access->queries[query_index];
     const uint8_t *expected_data =
-        &synthetic_dataset[query_block_id * NUM_BYTES_PER_BLOCK];
+        &synthetic_dataset[query_block_id * NUM_DATA_BYTES_PER_BLOCK];
     CLIENT_access(query_block_id, READ, NULL, returned_data);
 
-    if (memcmp(expected_data, returned_data, NUM_BYTES_PER_BLOCK) != 0) {
+    if (memcmp(expected_data, returned_data, NUM_DATA_BYTES_PER_BLOCK) != 0) {
       fprintf(stderr,
               "Comparison of data for block: %u differs from expected.\n",
               query_block_id);
@@ -138,15 +140,15 @@ static void perform_access(const uint32_t access_index) {
 //     const uint32_t block_to_access = uniform_random(NUM_TOTAL_REAL_BLOCKS);
 //     const bool performWrite = coin_flip();
 //     if (performWrite) {
-//       uint8_t new_block_data[NUM_BYTES_PER_BLOCK];
-//       generate_random_bytes(new_block_data, NUM_BYTES_PER_BLOCK);
+//       uint8_t new_block_data[NUM_DATA_BYTES_PER_BLOCK];
+//       generate_random_bytes(new_block_data, NUM_DATA_BYTES_PER_BLOCK);
 //       // probably want to change this so I can give the option of whether the
 //       // old data should be saved, for example if i want to have the option
 //       to
 //       // ensure correctness by comparing prev data
 //       CLIENT_access(block_to_access, WRITE, new_block_data, NULL);
 //       update_synthetic_block_data(block_to_access, new_block_data,
-//                                   NUM_BYTES_PER_BLOCK);
+//                                   NUM_DATA_BYTES_PER_BLOCK);
 
 //     } else {
 //       // again should probably have an option here to specify whether old
@@ -160,8 +162,8 @@ static void perform_access(const uint32_t access_index) {
 // static void update_synthetic_block_data(const uint32_t block_id,
 //                                         const uint8_t new_data[],
 //                                         const uint32_t num_bytes) {
-//   const bool tooManyBytes = num_bytes > NUM_BYTES_PER_BLOCK;
-//   const bool tooFewBytes = num_bytes < NUM_BYTES_PER_BLOCK;
+//   const bool tooManyBytes = num_bytes > NUM_DATA_BYTES_PER_BLOCK;
+//   const bool tooFewBytes = num_bytes < NUM_DATA_BYTES_PER_BLOCK;
 
 //   if (tooManyBytes || tooFewBytes) {
 //     fprintf(stderr, "Attempted to update synthetic block data with incorrect
@@ -170,7 +172,7 @@ static void perform_access(const uint32_t access_index) {
 //     exit(1);
 //   }
 
-//   const uint32_t synthetic_data_index = block_id * NUM_BYTES_PER_BLOCK;
+//   const uint32_t synthetic_data_index = block_id * NUM_DATA_BYTES_PER_BLOCK;
 
 //   mempcy(&synthetic_dataset[synthetic_data_index], num_bytes);
 // }
