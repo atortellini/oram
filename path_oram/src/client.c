@@ -172,11 +172,12 @@ static uint32_t get_bucket_id(uint32_t path_id, uint32_t level) {
 static size_t read_bucket_from_server(uint32_t bucket_id,
                                       Block blocks_found[]) {
 
-  EncryptedBucket *encrypted_bucket = SERVER_read_bucket(bucket_id);
+  EncryptedBucket encrypted_bucket;
+  SERVER_read_bucket(bucket_id, &encrypted_bucket);
 
   size_t num_blocks_found = 0;
   for (size_t i = 0; i < NUM_BLOCKS_PER_BUCKET; i++) {
-    const EncryptedBlock *encrypted_block = &encrypted_bucket->blocks[i];
+    const EncryptedBlock *encrypted_block = &encrypted_bucket.blocks[i];
     Block decrypted_block;
     CRYPTO_decrypt_block(encrypted_block, &decrypted_block);
     if (is_dummy_block(&decrypted_block)) {
