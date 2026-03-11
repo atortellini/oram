@@ -10,6 +10,5 @@ extern BLOCK DUMMY_BLOCK;
 
 extern RORAM rORAM;
 extern uint32_t EVICTION_COUNTER;
-extern ENCRYPTED_BUCKET server_storage[NUM_TOTAL_BUCKETS];
 
 #endif

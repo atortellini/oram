@@ -3,7 +3,9 @@
 
 #include "types.h"
 
-ENCRYPTED_BUCKET *SERVER_read_bucket(uint32_t bucket_id);
+void SERVER_init(void);
+
+void SERVER_read_bucket(uint32_t bucket_id, ENCRYPTED_BUCKET *bucket_out);
 
 void SERVER_write_bucket(uint32_t bucket_id, ENCRYPTED_BUCKET *bucket);
 
