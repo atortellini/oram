@@ -24,8 +24,8 @@ void STASH_remove_block(STASH *stash, const uint32_t index) {
     exit(1);
   }
 
-  const bool stashHasOneBlock = num_blocks == 1;
-  if (stashHasOneBlock) {
+  const bool indexToRemoveIsLastBlock = index == (num_blocks - 1);
+  if (indexToRemoveIsLastBlock) {
     stash->num_blocks--;
     return;
   }
