@@ -67,7 +67,7 @@ void SERVER_write_range(uint32_t bucket_id, uint32_t num_buckets,
 }
 
 static void seek_to_bucket(uint32_t bucket_id) {
-  const uint32_t bucket_byte_offset = bucket_id * sizeof(ENCRYPTED_BUCKET);
+  const size_t bucket_byte_offset = bucket_id * sizeof(ENCRYPTED_BUCKET);
   if (fseek(server_storage, bucket_byte_offset, SEEK_SET)) {
     server_failed_seek(bucket_id);
   }
