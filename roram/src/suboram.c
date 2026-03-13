@@ -73,6 +73,7 @@ void SUBORAM_init(SUBORAM *oram, const size_t suboram_index) {
 
   fill_pmap_random_base_paths(&oram->pm, num_pmap_entries);
 
+  STASH_init(&oram->stash);
 }
 
 // assumes that results pointer will be of size range_size (2^i for subram R_i)

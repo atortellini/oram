@@ -6,8 +6,10 @@
 
 typedef struct stash_t {
   size_t num_blocks;
-  BLOCK stash[STASH_SIZE];
+  BLOCK *stash;
 } STASH;
+
+void STASH_init(STASH *stash);
 
 void STASH_remove_block(STASH *stash, const uint32_t index);
 
