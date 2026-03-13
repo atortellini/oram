@@ -15,15 +15,8 @@
 
 #define min(X, Y) ((X) < (Y) ? (X) : (Y))
 
-static void write_bucket_range_to_server(const SUBORAM *oram,
-                                         const BUCKET *buckets,
-                                         const uint32_t base_path,
-                                         const uint32_t num_buckets,
-                                         const uint32_t level);
-
-static void encrypt_buckets(const BUCKET *plaintext_buckets,
-                            ENCRYPTED_BUCKET *encrypted_buckets,
-                            const uint32_t num_buckets);
+static ENCRYPTED_BUCKET *encrypt_buckets(const BUCKET *plaintext_buckets,
+                                         const uint32_t num_buckets);
 
 static void fill_bucket_with_blocks_from_stash_intersecting_path_at_level(
     SUBORAM *oram, BLOCK *bucket_buffer, const uint32_t path_tag,
@@ -61,6 +54,15 @@ static void record_blocks_in_address_range(
     const bool ignoreIfAlreadyFound);
 static bool *record_block_addresses_found_in_stash(const SUBORAM *suboram);
 
+static uint32_t read_bucket_range(const SUBORAM *suboram,
+                                  uint32_t range_start_path,
+                                  uint32_t range_size, uint32_t level,
+                                  ENCRYPTED_BUCKET **buckets_out);
+static void write_bucket_range(SUBORAM *suboram, uint32_t range_start_path,
+                               uint32_t range_size, uint32_t level,
+                               ENCRYPTED_BUCKET *encrypted_buckets,
+                               uint32_t num_buckets);
+
 void SUBORAM_init(SUBORAM *oram, const size_t suboram_index) {
   oram->oram_index = suboram_index;
   const uint32_t num_pmap_entries = 1 << (HEIGHT_OF_TREE - suboram_index);
@@ -70,6 +72,7 @@ void SUBORAM_init(SUBORAM *oram, const size_t suboram_index) {
   oram->pm.map = new_pmap;
 
   fill_pmap_random_base_paths(&oram->pm, num_pmap_entries);
+
 }
 
 // assumes that results pointer will be of size range_size (2^i for subram R_i)
@@ -86,28 +89,16 @@ uint32_t SUBORAM_read_range(SUBORAM *oram, const uint32_t address,
       oram, results, addresses_found_map, address, range_size);
 
   for (uint32_t level = 0; level <= HEIGHT_OF_TREE; level++) {
-    const uint32_t num_buckets_at_level = 1U << level;
-    const uint32_t num_buckets_to_access =
-        min(range_size, num_buckets_at_level);
+
+    ENCRYPTED_BUCKET *encrypted_server_buckets = NULL;
+    uint32_t num_server_buckets = read_bucket_range(
+        oram, range_start_tag, range_size, level, &encrypted_server_buckets);
 
     BUCKET *bucket_writeback =
-        (BUCKET *)malloc(sizeof(*bucket_writeback) * num_buckets_to_access);
+        (BUCKET *)malloc(sizeof(*bucket_writeback) * num_server_buckets);
     assert(bucket_writeback);
-    ENCRYPTED_BUCKET *encrypted_bucket_writeback = (ENCRYPTED_BUCKET *)malloc(
-        sizeof(*encrypted_bucket_writeback) * num_buckets_to_access);
-    assert(encrypted_bucket_writeback);
 
-    ENCRYPTED_BUCKET *encrypted_server_buckets = (ENCRYPTED_BUCKET *)malloc(
-        sizeof(*encrypted_server_buckets) * num_buckets_to_access);
-    assert(encrypted_server_buckets);
-
-    for (uint32_t i = 0; i < num_buckets_to_access; i++) {
-      const uint32_t server_bucket_id = calculate_absolute_bucket_id(
-          oram->oram_index, range_start_tag + i, level);
-      SERVER_read_bucket(server_bucket_id, &encrypted_server_buckets[i]);
-    }
-
-    for (uint32_t i = 0; i < num_buckets_to_access; i++) {
+    for (uint32_t i = 0; i < num_server_buckets; i++) {
       const ENCRYPTED_BUCKET *encrypted_bucket = &encrypted_server_buckets[i];
 
       for (uint32_t j = 0; j < NUM_BLOCKS_PER_BUCKET; j++) {
@@ -148,14 +139,11 @@ uint32_t SUBORAM_read_range(SUBORAM *oram, const uint32_t address,
       }
     }
 
-    encrypt_buckets(bucket_writeback, encrypted_bucket_writeback,
-                    num_buckets_to_access);
+    ENCRYPTED_BUCKET *encrypted_bucket_writeback =
+        encrypt_buckets(bucket_writeback, num_server_buckets);
 
-    for (uint32_t i = 0; i < num_buckets_to_access; i++) {
-      const uint32_t server_bucket_id = calculate_absolute_bucket_id(
-          oram->oram_index, range_start_tag + i, level);
-      SERVER_write_bucket(server_bucket_id, &encrypted_bucket_writeback[i]);
-    }
+    write_bucket_range(oram, range_start_tag, range_size, level,
+                       encrypted_bucket_writeback, num_server_buckets);
 
     free(bucket_writeback);
     free(encrypted_bucket_writeback);
@@ -169,9 +157,14 @@ void SUBORAM_batch_evict(SUBORAM *oram, const size_t num_evictions) {
   // fprintf(stderr, "[SUBORAM_%u]: [EVICT] PATH %u WITH %lu EVICTIONS\n",
   //         oram->oram_index, EVICTION_COUNTER, num_evictions);
 
+// ADD TIMER FOR RECORDING ALL BLOCK ADDRESSES IN STASH
+// IF THIS IS FOUND TO A BE A BOTTLENECK COULD BE IMPROVED BY KEEPING AN ADDRESS MAP AS PART OF THE STASH AND UPDATING IT WHENEVER ADDING/REMOVING A BLOCK FROM STASH
   bool *addresses_found_map = record_block_addresses_found_in_stash(oram);
+
+  // ADD TIMER FOR READING ALL UNIQUE BUCKETS INTO STASH ALONG PATHS
   for (size_t level = 0; level <= HEIGHT_OF_TREE; level++) {
     size_t num_blocks_found = 0;
+    // ADD TIMER FOR READING BUCKETS AT LEVEL
     BLOCK *blocks_found = read_buckets_at_level_along_paths(
         oram, level, EVICTION_COUNTER, num_evictions, &num_blocks_found);
     // fprintf(stderr, "[SUBORAM_%u]: [EVICT] READ %lu BUCKETS FROM LEVEL
@@ -181,6 +174,9 @@ void SUBORAM_batch_evict(SUBORAM *oram, const size_t num_evictions) {
     // STASH\n",
     //         oram->oram_index);
 
+    // ADD TIMER FOR INSERTING BLOCKS INTO STASH
+    // BOTH ADDING AND CHECKING IF THE BLOCK IS CONSTANT TIME DUE TO STASH IMPLEMENTATION AND THE ADDRESS MAP, ALTHOUGH HAVING TO CREATE THE ADDRESS MAP
+    // EVERY BATCH EVICT STILL MAKES IT LINEAR
     insert_unique_blocks_into_stash(&oram->stash, blocks_found,
                                     num_blocks_found, addresses_found_map);
 
@@ -189,6 +185,7 @@ void SUBORAM_batch_evict(SUBORAM *oram, const size_t num_evictions) {
 
   free(addresses_found_map);
 
+  // ADD TIMER FOR ENTIRE PROCESS OF EVICTING BUCKETS TO EVERY LEVEL
   for (int level = HEIGHT_OF_TREE; level >= 0; level--) {
     const uint32_t num_buckets_at_level = 1U << level;
     const uint32_t bounded_num_unique_paths =
@@ -198,18 +195,25 @@ void SUBORAM_batch_evict(SUBORAM *oram, const size_t num_evictions) {
         sizeof(*new_buckets_at_level) * bounded_num_unique_paths);
     assert(new_buckets_at_level);
 
+    // ADD TIMER FOR FILLING ALL PATH BUCKETS
     for (uint32_t path_offset = 0; path_offset < bounded_num_unique_paths;
          path_offset++) {
       const uint32_t path = EVICTION_COUNTER + path_offset;
       BLOCK *bucket_buffer = new_buckets_at_level[path_offset].blocks;
 
+      // ADD TIMER FOR FILLING BUCKET WITH BLOCKS FROM STASH AT LEVEL
       fill_bucket_with_blocks_from_stash_intersecting_path_at_level(
           oram, bucket_buffer, path, level);
     }
 
-    write_bucket_range_to_server(oram, new_buckets_at_level, EVICTION_COUNTER,
-                                 bounded_num_unique_paths, level);
+    // ADD TIMER FOR ENCRYPTING THE BUCKETS
+    ENCRYPTED_BUCKET *new_encrypted_buckets =
+        encrypt_buckets(new_buckets_at_level, bounded_num_unique_paths);
+    // ADD TIMER FOR WRITING THE BUCKET RANGE BACK ON THE LEVEL
+    write_bucket_range(oram, EVICTION_COUNTER, num_evictions, level,
+                       new_encrypted_buckets, bounded_num_unique_paths);
 
+    free(new_encrypted_buckets);
     free(new_buckets_at_level);
   }
 }
@@ -243,36 +247,20 @@ void SUBORAM_update_position_map(SUBORAM *suboram, const uint32_t address,
   //         range_base_address, new_range_base_path);
 }
 
-static void write_bucket_range_to_server(const SUBORAM *oram,
-                                         const BUCKET *buckets,
-                                         const uint32_t base_path,
-                                         const uint32_t num_buckets,
-                                         const uint32_t level) {
+static ENCRYPTED_BUCKET *encrypt_buckets(const BUCKET *plaintext_buckets,
+                                         const uint32_t num_buckets) {
   ENCRYPTED_BUCKET *encrypted_buckets =
       (ENCRYPTED_BUCKET *)malloc(sizeof(*encrypted_buckets) * num_buckets);
   assert(encrypted_buckets);
 
-  encrypt_buckets(buckets, encrypted_buckets, num_buckets);
-
-  for (uint32_t i = 0; i < num_buckets; i++) {
-    const uint32_t absolute_bucket_id =
-        calculate_absolute_bucket_id(oram->oram_index, base_path + i, level);
-
-    SERVER_write_bucket(absolute_bucket_id, &encrypted_buckets[i]);
-  }
-
-  free(encrypted_buckets);
-}
-
-static void encrypt_buckets(const BUCKET *plaintext_buckets,
-                            ENCRYPTED_BUCKET *encrypted_buckets,
-                            const uint32_t num_buckets) {
   for (uint32_t i = 0; i < num_buckets; i++) {
     for (uint32_t j = 0; j < NUM_BLOCKS_PER_BUCKET; j++) {
       CRYPTO_encrypt_block(&plaintext_buckets[i].blocks[j],
                            &encrypted_buckets[i].blocks[j]);
     }
   }
+
+  return encrypted_buckets;
 }
 
 static uint32_t calculate_absolute_bucket_id(const uint32_t suboram_index,
@@ -421,25 +409,17 @@ static BLOCK *read_buckets_at_level_along_paths(const SUBORAM *oram,
                                                 size_t *num_blocks_found) {
 
   *num_blocks_found = 0;
-  const uint32_t num_buckets_at_level = 1U << level;
-  const uint32_t num_buckets_to_access = min(range_size, num_buckets_at_level);
 
-  ENCRYPTED_BUCKET *encrypted_buckets = (ENCRYPTED_BUCKET *)malloc(
-      sizeof(*encrypted_buckets) * num_buckets_to_access);
-  assert(encrypted_buckets);
+  ENCRYPTED_BUCKET *encrypted_buckets = NULL;
+
+  uint32_t num_buckets_read = read_bucket_range(
+      oram, range_start_tag, range_size, level, &encrypted_buckets);
 
   BLOCK *blocks_found = (BLOCK *)malloc(
-      sizeof(*blocks_found) * NUM_BLOCKS_PER_BUCKET * num_buckets_to_access);
+      sizeof(*blocks_found) * NUM_BLOCKS_PER_BUCKET * num_buckets_read);
   assert(blocks_found);
 
-  for (uint32_t i = 0; i < num_buckets_to_access; i++) {
-    const uint32_t absolute_bucket_id = calculate_absolute_bucket_id(
-        oram->oram_index, range_start_tag + i, level);
-
-    SERVER_read_bucket(absolute_bucket_id, &encrypted_buckets[i]);
-  }
-
-  for (uint32_t bkt_id = 0; bkt_id < num_buckets_to_access; bkt_id++) {
+  for (uint32_t bkt_id = 0; bkt_id < num_buckets_read; bkt_id++) {
     const ENCRYPTED_BUCKET *encrypted_bucket = &encrypted_buckets[bkt_id];
 
     for (uint32_t blk_idx = 0; blk_idx < NUM_BLOCKS_PER_BUCKET; blk_idx++) {
@@ -469,5 +449,102 @@ static void fill_pmap_random_base_paths(POSITION_MAP *pm,
                                         uint32_t num_entries) {
   for (uint32_t i = 0; i < num_entries; i++) {
     pm->map[i] = uniform_random(NUM_TOTAL_REAL_BLOCKS);
+  }
+}
+
+static uint32_t read_bucket_range(const SUBORAM *suboram,
+                                  uint32_t range_start_path,
+                                  uint32_t range_size, uint32_t level,
+                                  ENCRYPTED_BUCKET **buckets_out) {
+  const uint32_t num_buckets_at_level = 1U << level;
+  range_size = min(num_buckets_at_level, range_size);
+
+  *buckets_out = NULL;
+  ENCRYPTED_BUCKET *encrypted_buckets =
+      (ENCRYPTED_BUCKET *)malloc(sizeof(*encrypted_buckets) * range_size);
+  assert(encrypted_buckets);
+
+  uint32_t num_buckets_read = 0;
+
+  const uint32_t range_start_path_at_level =
+      range_start_path % num_buckets_at_level;
+
+  const uint32_t range_end_path_at_level =
+      range_start_path_at_level + range_size - 1;
+
+  const bool rangeWrapsaround = range_end_path_at_level >= num_buckets_at_level;
+  if (rangeWrapsaround) {
+    const uint32_t num_buckets_over =
+        range_end_path_at_level - num_buckets_at_level + 1;
+
+    const uint32_t first_range_size = range_size - num_buckets_over;
+    const uint32_t second_range_size = num_buckets_over;
+
+    const uint32_t first_range_server_bucket_id = calculate_absolute_bucket_id(
+        suboram->oram_index, range_start_path, level);
+    const uint32_t second_range_server_bucket_id =
+        calculate_absolute_bucket_id(suboram->oram_index, 0, level);
+
+    ENCRYPTED_BUCKET *first_range_bucket_buffer = encrypted_buckets;
+    ENCRYPTED_BUCKET *second_range_bucket_buffer =
+        encrypted_buckets + first_range_size;
+
+    SERVER_read_range(second_range_server_bucket_id, second_range_size,
+                      second_range_bucket_buffer);
+    SERVER_read_range(first_range_server_bucket_id, first_range_size,
+                      first_range_bucket_buffer);
+
+  } else {
+    const uint32_t server_bucket_id = calculate_absolute_bucket_id(
+        suboram->oram_index, range_start_path, level);
+    SERVER_read_range(server_bucket_id, range_size, encrypted_buckets);
+  }
+
+  num_buckets_read = range_size;
+  *buckets_out = encrypted_buckets;
+  return num_buckets_read;
+}
+
+static void write_bucket_range(SUBORAM *suboram, uint32_t range_start_path,
+                               uint32_t range_size, uint32_t level,
+                               ENCRYPTED_BUCKET *encrypted_buckets,
+                               uint32_t num_buckets) {
+  const uint32_t num_buckets_at_level = 1U << level;
+  range_size = min(num_buckets_at_level, range_size);
+
+  assert(num_buckets == range_size);
+
+  const uint32_t range_start_path_at_level =
+      range_start_path % num_buckets_at_level;
+
+  const uint32_t range_end_path_at_level =
+      range_start_path_at_level + range_size - 1;
+
+  const bool rangeWrapsaround = range_end_path_at_level >= num_buckets_at_level;
+  if (rangeWrapsaround) {
+    const uint32_t num_buckets_over =
+        range_end_path_at_level - num_buckets_at_level + 1;
+
+    const uint32_t first_range_size = range_size - num_buckets_over;
+    const uint32_t second_range_size = num_buckets_over;
+
+    const uint32_t first_range_server_bucket_id = calculate_absolute_bucket_id(
+        suboram->oram_index, range_start_path, level);
+    const uint32_t second_range_server_bucket_id =
+        calculate_absolute_bucket_id(suboram->oram_index, 0, level);
+
+    ENCRYPTED_BUCKET *first_range_buckets = encrypted_buckets;
+    ENCRYPTED_BUCKET *second_range_buckets =
+        encrypted_buckets + first_range_size;
+
+    SERVER_write_range(second_range_server_bucket_id, second_range_size,
+                       second_range_buckets);
+    SERVER_write_range(first_range_server_bucket_id, first_range_size,
+                       first_range_buckets);
+
+  } else {
+    const uint32_t server_bucket_id = calculate_absolute_bucket_id(
+        suboram->oram_index, range_start_path, level);
+    SERVER_write_range(server_bucket_id, range_size, encrypted_buckets);
   }
 }
