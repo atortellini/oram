@@ -10,7 +10,6 @@
 
 static FILE *server_storage;
 static bool serverStorageIsInitialized;
-static uint32_t server_storage_fpos;
 
 static void seek_to_bucket(uint32_t bucket_id);
 static void server_failure(char *error_string);
@@ -24,7 +23,6 @@ void SERVER_init(void) {
 
   server_storage = tmpfile();
   assert(server_storage);
-  server_storage_fpos = 0;
   serverStorageIsInitialized = true;
 }
 
@@ -70,11 +68,8 @@ void SERVER_write_range(uint32_t bucket_id, uint32_t num_buckets,
 
 static void seek_to_bucket(uint32_t bucket_id) {
   const uint32_t bucket_byte_offset = bucket_id * sizeof(ENCRYPTED_BUCKET);
-  if (server_storage_fpos != bucket_byte_offset) {
-    if (fseek(server_storage, bucket_byte_offset, SEEK_SET)) {
-      server_failed_seek(bucket_id);
-    }
-    server_storage_fpos = bucket_byte_offset;
+  if (fseek(server_storage, bucket_byte_offset, SEEK_SET)) {
+    server_failed_seek(bucket_id);
   }
 }
 
