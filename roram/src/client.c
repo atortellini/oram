@@ -35,7 +35,7 @@ static void fill_server_with_dummies(void) {
     for (size_t i = 0; i < NUM_BLOCKS_PER_BUCKET; i++) {
       CRYPTO_encrypt_block(&DUMMY_BLOCK, &encrypted_dummy_bucket.blocks[i]);
     }
-    SERVER_write_bucket(bucket_id, &encrypted_dummy_bucket);
+    SERVER_write_range(bucket_id, 1, &encrypted_dummy_bucket);
   }
 }
 
