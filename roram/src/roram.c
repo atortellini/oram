@@ -62,12 +62,10 @@ void RORAM_access(RORAM *roram, const uint32_t address,
   BLOCK *second_range_retrieved_block_buffer = retrieved_data + range_size;
   bool *second_range_address_found_map = addresses_found_map + range_size;
 
-  const bool rangesWraparound =
-      second_range_base_address < first_range_base_address;
-
   // fprintf(
   //     stderr, "[RORAM]: [ACCESS] ADDR: %u RNG: %u 1R_ADDR: %u 2R_ADDR: %u\n",
-  //     address, range_size, first_range_base_address, second_range_base_address);
+  //     address, range_size, first_range_base_address,
+  //     second_range_base_address);
 
   const uint32_t first_range_new_path = SUBORAM_read_range(
       suboram, first_range_base_address, first_range_retrieved_block_buffer,
@@ -83,7 +81,8 @@ void RORAM_access(RORAM *roram, const uint32_t address,
       const uint32_t current_address =
           (boundary_aligned_base_address + address_offset) %
           NUM_TOTAL_REAL_BLOCKS;
-      // fprintf(stderr, "Creating new block for address: %u\n", current_address);
+      // fprintf(stderr, "Creating new block for address: %u\n",
+      // current_address);
       BLOCK *new_block = &retrieved_data[address_offset];
       create_new_block(roram, new_block, current_address);
     }
@@ -118,15 +117,11 @@ void RORAM_access(RORAM *roram, const uint32_t address,
     SUBORAM *suboram_to_update = &roram->subORAMs[i];
     STASH *stash_to_update = &suboram_to_update->stash;
 
-    if (rangesWraparound) {
-      find_and_remove_blocks_in_range_from_stash(
-          stash_to_update, first_range_base_address, range_size);
-      find_and_remove_blocks_in_range_from_stash(
-          stash_to_update, second_range_base_address, range_size);
-    } else {
-      find_and_remove_blocks_in_range_from_stash(
-          stash_to_update, boundary_aligned_base_address, range_size * 2);
-    }
+    find_and_remove_blocks_in_range_from_stash(
+        stash_to_update, first_range_base_address, range_size);
+    find_and_remove_blocks_in_range_from_stash(
+        stash_to_update, second_range_base_address, range_size);
+
     add_blocks_to_stash(stash_to_update, retrieved_data, range_size * 2);
     SUBORAM_batch_evict(suboram_to_update, range_size * 2);
   }
@@ -173,9 +168,9 @@ static void find_and_remove_blocks_in_range_from_stash(
 }
 
 static void update_blocks_path_tags(BLOCK *blocks, const uint32_t suboram_index,
-                                    const uint32_t range_size,
+                                    const uint32_t num_blocks,
                                     const uint32_t new_base_path) {
-  for (uint32_t i = 0; i < range_size; i++) {
+  for (uint32_t i = 0; i < num_blocks; i++) {
     blocks[i].path_tags[suboram_index] =
         (new_base_path + i) % NUM_TOTAL_REAL_BLOCKS;
   }
