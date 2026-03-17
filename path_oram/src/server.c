@@ -31,7 +31,7 @@ void SERVER_read_bucket(uint32_t bucket_id, EncryptedBucket *bucket_out) {
     exit(EXIT_FAILURE);
   }
 
-  const uint32_t bucket_byte_offset = bucket_id * sizeof(EncryptedBucket);
+  const size_t bucket_byte_offset = bucket_id * sizeof(EncryptedBucket);
   if (fseek(server_storage, bucket_byte_offset, SEEK_SET)) {
     server_failed_seek(bucket_id);
   }
@@ -51,7 +51,7 @@ void SERVER_write_bucket(uint32_t bucket_id, EncryptedBucket *bucket) {
     SERVER_init();
   }
 
-  const uint32_t bucket_byte_offset = bucket_id * sizeof(EncryptedBucket);
+  const size_t bucket_byte_offset = bucket_id * sizeof(EncryptedBucket);
   if (fseek(server_storage, bucket_byte_offset, SEEK_SET)) {
     server_failed_seek(bucket_id);
   }
