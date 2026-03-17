@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include "../../parameters/parameters.h"
 #include "client.h"
@@ -18,8 +19,7 @@ typedef struct access_t {
   uint32_t base_address;
 } ACCESS;
 
-static uint8_t
-    synthetic_dataset[NUM_TOTAL_REAL_BLOCKS * NUM_DATA_BYTES_PER_BLOCK];
+static uint8_t *synthetic_dataset;
 static ACCESS access_sequence_buffer[NUM_EXPERIMENT_ACCESSES];
 
 static void prepare_synthetic_data(void);
@@ -55,6 +55,9 @@ void perform_experiments(void) {
 }
 
 static void prepare_synthetic_data(void) {
+  synthetic_dataset = (uint8_t *)malloc(sizeof(uint8_t) * NUM_TOTAL_REAL_BLOCKS * NUM_DATA_BYTES_PER_BLOCK);
+  assert(synthetic_dataset);
+  
   struct timespec e;
   TIME_VOID_FUNC(&e, generate_synthetic_data());
   fprintf(stdout, "Finished generating synthetic data in: %ld s %ld ns\n",
