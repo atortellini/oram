@@ -18,7 +18,7 @@ typedef struct {
 
 typedef struct {
   size_t num_blocks;
-  Block stash[STASH_SIZE];
+  Block *stash;
 } Stash;
 
 typedef struct {

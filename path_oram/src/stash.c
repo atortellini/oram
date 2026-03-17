@@ -4,9 +4,16 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #include "types.h"
 #include "globals.h"
+
+void STASH_init(void) {
+  Block *new_stash = (Block *)malloc(sizeof(*new_stash) * STASH_SIZE);
+  assert(new_stash);
+  client_stash.stash = new_stash;
+}
 
 void STASH_remove_block(uint32_t index) {
   const size_t num_blocks = client_stash.num_blocks;
