@@ -1,8 +1,6 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
-#include <stdint.h>
-
 #include "../../parameters/parameters.h"
 
 #define NUM_TOTAL_REAL_BLOCKS (1U << NUM_REAL_DATA_BLOCKS_AS_POWER_OF_2)
@@ -12,15 +10,12 @@
 // 303 was taken from Section 6.4 Fig. 5 as the required max size for a 256-bit
 // security parameter excluding the path initially retrieved from an access.
 
-#define NUM_BYTES_FOR_PATH_ID 4U
-#define NUM_BYTES_FOR_BLOCK_ID 4U
-#define NUM_BYTES_PER_BLOCK_AND_METADATA                                       \
-  (NUM_BYTES_FOR_BLOCK_ID + NUM_BYTES_FOR_PATH_ID + NUM_DATA_BYTES_PER_BLOCK)
+#define NUM_BYTES_PER_BLOCK_AND_METADATA sizeof(Block)
 
 #define AES_KEY_SIZE_BYTES 32U
 #define AES_IV_SIZE_BYTES 12U
 #define AES_TAG_SIZE_BYTES 16U
 #define NUM_BYTES_PER_ENCRYPTED_BLOCK                                          \
-  (AES_IV_SIZE_BYTES + NUM_BYTES_PER_BLOCK_AND_METADATA + AES_TAG_SIZE_BYTES)
+  (AES_IV_SIZE_BYTES + sizeof(Block) + AES_TAG_SIZE_BYTES)
 
 #endif
