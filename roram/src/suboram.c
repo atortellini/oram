@@ -17,7 +17,6 @@
 
 static ENCRYPTED_BUCKET *encrypt_buckets(const BUCKET *plaintext_buckets,
                                          const uint32_t num_buckets);
-
 static void fill_bucket_with_blocks_from_stash_intersecting_path_at_level(
     SUBORAM *oram, BLOCK *bucket_buffer, const uint32_t path_tag,
     const uint32_t level);
@@ -28,22 +27,12 @@ static void insert_unique_blocks_into_stash(STASH *stash,
 static void find_and_record_blocks_found_in_range_from_stash(
     const SUBORAM *suboram, BLOCK *results, bool *addresses_found_map,
     const uint32_t base_address, const uint32_t range_size);
-// static void fetch_and_record_new_blocks_in_range_from_server(
-//     SUBORAM *oram, BLOCK *results, bool *addresses_found_map,
-//     const uint32_t base_address, const uint32_t range_start_tag,
-//     const uint32_t range_size);
 static BLOCK *read_buckets_at_level_along_paths(const SUBORAM *oram,
                                                 const size_t level,
                                                 const uint32_t range_start_tag,
                                                 const uint32_t range_size,
                                                 size_t *num_blocks_found);
 static bool is_dummy_block(BLOCK *block);
-// static void filter_and_record_new_blocks(BLOCK *blocks, const size_t
-// num_blocks,
-//                                          BLOCK *results,
-//                                          const uint32_t base_address,
-//                                          const uint32_t range_size,
-//                                          bool *addresses_found_map);
 static void fill_pmap_random_base_paths(POSITION_MAP *pm, uint32_t num_entries);
 static uint32_t calculate_absolute_bucket_id(const uint32_t suboram_index,
                                              const uint32_t path,
@@ -79,8 +68,6 @@ void SUBORAM_init(SUBORAM *oram, const size_t suboram_index) {
 // assumes that results pointer will be of size range_size (2^i for subram R_i)
 uint32_t SUBORAM_read_range(SUBORAM *oram, const uint32_t address,
                             BLOCK *results, bool *addresses_found_map) {
-  // fprintf(stderr, "[SUBORAM_%u]: [READRANGE] ADDR: %u\n", oram->oram_index,
-  //         address);
   const uint32_t range_size = 1U << oram->oram_index;
   const uint32_t range_start_tag = SUBORAM_query_position_map(oram, address);
   const uint32_t new_range_tag = uniform_random(NUM_TOTAL_REAL_BLOCKS);
@@ -118,23 +105,11 @@ uint32_t SUBORAM_read_range(SUBORAM *oram, const uint32_t address,
 
           const bool blockAlreadyFound = addresses_found_map[address_offset];
           if (blockAlreadyFound) {
-            // fprintf(stderr,
-            //         "[SUBORAM_%u]: [READRANGE] FOUND BLOCK %u; IN RANGE BUT "
-            //         "ALREADY FOUND; IGNORING\n",
-            //         oram->oram_index, decrypted_block.block_address);
             continue;
           }
           addresses_found_map[address_offset] = true;
           results[address_offset] = decrypted_block;
-          // fprintf(
-          //     stderr,
-          //     "[SUBORAM_%u]: [READRANGE] FOUND BLOCK %u; IN RANGE;
-          //     KEEPING\n", oram->oram_index, decrypted_block.block_address);
         } else {
-          // fprintf(
-          //     stderr,
-          //     "[SUBORAM_%u]: [READRANGE] FOUND BLOCK %u; ADDING TO
-          //     WRITEBACK\n", oram->oram_index, decrypted_block.block_address);
           bucket_writeback[i].blocks[j] = decrypted_block;
         }
       }
@@ -155,29 +130,13 @@ uint32_t SUBORAM_read_range(SUBORAM *oram, const uint32_t address,
 }
 
 void SUBORAM_batch_evict(SUBORAM *oram, const size_t num_evictions) {
-  // fprintf(stderr, "[SUBORAM_%u]: [EVICT] PATH %u WITH %lu EVICTIONS\n",
-  //         oram->oram_index, EVICTION_COUNTER, num_evictions);
-
-// ADD TIMER FOR RECORDING ALL BLOCK ADDRESSES IN STASH
-// IF THIS IS FOUND TO A BE A BOTTLENECK COULD BE IMPROVED BY KEEPING AN ADDRESS MAP AS PART OF THE STASH AND UPDATING IT WHENEVER ADDING/REMOVING A BLOCK FROM STASH
   bool *addresses_found_map = record_block_addresses_found_in_stash(oram);
 
-  // ADD TIMER FOR READING ALL UNIQUE BUCKETS INTO STASH ALONG PATHS
   for (size_t level = 0; level <= HEIGHT_OF_TREE; level++) {
     size_t num_blocks_found = 0;
-    // ADD TIMER FOR READING BUCKETS AT LEVEL
     BLOCK *blocks_found = read_buckets_at_level_along_paths(
         oram, level, EVICTION_COUNTER, num_evictions, &num_blocks_found);
-    // fprintf(stderr, "[SUBORAM_%u]: [EVICT] READ %lu BUCKETS FROM LEVEL
-    // %lu\n",
-    //         oram->oram_index, num_blocks_found, level);
-    // fprintf(stderr, "[SUBORAM_%u]: [EVICT] INSERTING NEW BLOCKS INTO
-    // STASH\n",
-    //         oram->oram_index);
 
-    // ADD TIMER FOR INSERTING BLOCKS INTO STASH
-    // BOTH ADDING AND CHECKING IF THE BLOCK IS CONSTANT TIME DUE TO STASH IMPLEMENTATION AND THE ADDRESS MAP, ALTHOUGH HAVING TO CREATE THE ADDRESS MAP
-    // EVERY BATCH EVICT STILL MAKES IT LINEAR
     insert_unique_blocks_into_stash(&oram->stash, blocks_found,
                                     num_blocks_found, addresses_found_map);
 
@@ -186,7 +145,6 @@ void SUBORAM_batch_evict(SUBORAM *oram, const size_t num_evictions) {
 
   free(addresses_found_map);
 
-  // ADD TIMER FOR ENTIRE PROCESS OF EVICTING BUCKETS TO EVERY LEVEL
   for (int level = HEIGHT_OF_TREE; level >= 0; level--) {
     const uint32_t num_buckets_at_level = 1U << level;
     const uint32_t bounded_num_unique_paths =
@@ -196,21 +154,18 @@ void SUBORAM_batch_evict(SUBORAM *oram, const size_t num_evictions) {
         sizeof(*new_buckets_at_level) * bounded_num_unique_paths);
     assert(new_buckets_at_level);
 
-    // ADD TIMER FOR FILLING ALL PATH BUCKETS
     for (uint32_t path_offset = 0; path_offset < bounded_num_unique_paths;
          path_offset++) {
       const uint32_t path = EVICTION_COUNTER + path_offset;
       BLOCK *bucket_buffer = new_buckets_at_level[path_offset].blocks;
 
-      // ADD TIMER FOR FILLING BUCKET WITH BLOCKS FROM STASH AT LEVEL
       fill_bucket_with_blocks_from_stash_intersecting_path_at_level(
           oram, bucket_buffer, path, level);
     }
 
-    // ADD TIMER FOR ENCRYPTING THE BUCKETS
     ENCRYPTED_BUCKET *new_encrypted_buckets =
         encrypt_buckets(new_buckets_at_level, bounded_num_unique_paths);
-    // ADD TIMER FOR WRITING THE BUCKET RANGE BACK ON THE LEVEL
+
     write_bucket_range(oram, EVICTION_COUNTER, num_evictions, level,
                        new_encrypted_buckets, bounded_num_unique_paths);
 
@@ -229,8 +184,7 @@ uint32_t SUBORAM_query_position_map(const SUBORAM *suboram,
 
   const uint32_t range_base_path =
       suboram->pm.map[range_number_containing_address];
-  // fprintf(stderr, "[PM]: [QUERY] BLOCKADDRESS: %u -> PATH: %u\n",
-  //         range_base_address, range_base_path);
+
   return range_base_path + address_offset;
 }
 
@@ -244,8 +198,6 @@ void SUBORAM_update_position_map(SUBORAM *suboram, const uint32_t address,
 
   const uint32_t new_range_base_path = new_path - address_offset;
   suboram->pm.map[range_number_containing_address] = new_range_base_path;
-  // fprintf(stderr, "[PM]: [UPDATE] BLOCKADDRESS: %u -> PATH: %u\n",
-  //         range_base_address, new_range_base_path);
 }
 
 static ENCRYPTED_BUCKET *encrypt_buckets(const BUCKET *plaintext_buckets,
@@ -294,12 +246,6 @@ static void fill_bucket_with_blocks_from_stash_intersecting_path_at_level(
         candidate_path_at_level == evicted_path_at_level;
 
     if (candidatePathIntersectsEvictedPath) {
-      // fprintf(stderr,
-      //         "[SUBORAM_%u] BLOCK %u (PATH %u) BEING ADDED TO SERVER BUCKET "
-      //         "WITH PATH %u "
-      //         "AT LEVEL %u\n",
-      //         oram->oram_index, candidate_block->block_address,
-      //         candidate_block->path_tags[oram->oram_index], path_tag, level);
       bucket_buffer[found_block_counter++] = *candidate_block;
       STASH_remove_block(&oram->stash, i);
       const bool bucketBufferIsFull =
@@ -314,10 +260,6 @@ static void fill_bucket_with_blocks_from_stash_intersecting_path_at_level(
 
   const bool bucketIsUnderfilled = found_block_counter < NUM_BLOCKS_PER_BUCKET;
   if (bucketIsUnderfilled) {
-    // fprintf(stderr,
-    //         "[SUBORAM_%u] SERVER BUCKET WITH PATH %u AT LEVEL %u BEING FILLED
-    //         " "WITH %lu DUMMIES\n", oram->oram_index, path_tag, level,
-    //         (NUM_BLOCKS_PER_BUCKET - found_block_counter));
     for (size_t i = found_block_counter; i < NUM_BLOCKS_PER_BUCKET; i++) {
       bucket_buffer[i] = DUMMY_BLOCK;
     }
@@ -333,12 +275,8 @@ static void insert_unique_blocks_into_stash(STASH *stash,
     const uint32_t current_block_address = current_block->block_address;
     const bool blockAlreadyFound = addresses_found_map[current_block_address];
     if (blockAlreadyFound) {
-      // fprintf(stderr, "[STASH]: BLOCK %u ALREADY FOUND IN STASH; IGNORING\n",
-      //         current_block_address);
       continue;
     } else {
-      // fprintf(stderr, "[STASH]: BLOCK %u NOT FOUND IN STASH; ADDING\n",
-      //         current_block_address);
       addresses_found_map[current_block_address] = true;
       STASH_add_block(stash, current_block);
     }
@@ -389,12 +327,8 @@ static void record_blocks_in_address_range(
       const bool blockAlreadyFound = address_found_map[address_offset];
 
       if (blockAlreadyFound && ignoreIfAlreadyFound) {
-        // fprintf(stderr, "[BLOCK FILTER]: BLOCK %u ALREADY FOUND; IGNORING\n",
-        //         current_block_address);
         continue;
       }
-      // fprintf(stderr, "[BLOCK FILTER]: FOUND BLOCK %u\n",
-      //         current_block_address);
       address_found_map[address_offset] = true;
       if (wantsFilteredBlocks) {
         filtered_results[address_offset] = *current_block;

@@ -62,11 +62,6 @@ void RORAM_access(RORAM *roram, const uint32_t address,
   BLOCK *second_range_retrieved_block_buffer = retrieved_data + range_size;
   bool *second_range_address_found_map = addresses_found_map + range_size;
 
-  // fprintf(
-  //     stderr, "[RORAM]: [ACCESS] ADDR: %u RNG: %u 1R_ADDR: %u 2R_ADDR: %u\n",
-  //     address, range_size, first_range_base_address,
-  //     second_range_base_address);
-
   const uint32_t first_range_new_path = SUBORAM_read_range(
       suboram, first_range_base_address, first_range_retrieved_block_buffer,
       first_range_address_found_map);
@@ -81,8 +76,7 @@ void RORAM_access(RORAM *roram, const uint32_t address,
       const uint32_t current_address =
           (boundary_aligned_base_address + address_offset) %
           NUM_TOTAL_REAL_BLOCKS;
-      // fprintf(stderr, "Creating new block for address: %u\n",
-      // current_address);
+
       BLOCK *new_block = &retrieved_data[address_offset];
       create_new_block(roram, new_block, current_address);
     }
