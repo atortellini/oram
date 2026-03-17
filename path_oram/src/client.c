@@ -168,8 +168,6 @@ static uint32_t get_bucket_id(uint32_t path_id, uint32_t level) {
   return bucket_id;
 }
 
-// Can either have this implementation decrypt the entire bucket and return all
-// of the decrypted blocks or can decrypt block by block
 static size_t read_bucket_from_server(uint32_t bucket_id,
                                       Block blocks_found[]) {
 

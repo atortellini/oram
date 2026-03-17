@@ -40,8 +40,6 @@ void perform_experiments(void) {
     TIME_VOID_FUNC(&elapsed_time, perform_access(access_index));
     fprintf(stdout, "Access %lu took: %ld s %ld ns\n", access_index,
             elapsed_time.tv_sec, elapsed_time.tv_nsec);
-    // DO SOMETHING WITH THIS TIMING INFORMATION LIKE WRITING TO A LOG FILE OR
-    // SOMETHING
   }
 }
 
