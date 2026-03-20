@@ -1,6 +1,10 @@
+# What is this?
+
+This repo contains two implementations of [ORAM schemes](#problem-definition) with an experiment harness for both. The experiment harness exercises its respective ORAM implementation through a configurable number of range queries of an equally configurable size. The experiment harness records and writes to stdout the latency observed for each range query performed. Given the range size `r` (which is a non-zero power of two) and the number of accesses `a` (which is also a non-zero power of two), the sequence of accesses performed will be `a` accesses for each of the `lg(r) + 1`, power of two, range sizes.
+
 # Parameters
 
-Configure the parameters of both ORAM implementations through the macros defined in `parameters/parameters.h`.
+Configure the parameters of both ORAM implementations and their experiment harnesses through the macros defined in `parameters/parameters.h`.
 
 # Compilation
 Use the CMake file to compile both `path_oram_test` and `roram_test` binaries.
